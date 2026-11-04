@@ -1,0 +1,317 @@
+import React, { useState } from 'react';
+import { 
+  StyleSheet, 
+  Text, 
+  View, 
+  TextInput, 
+  TouchableOpacity, 
+  ScrollView 
+} from 'react-native';
+import { Feather, Ionicons } from '@expo/vector-icons';
+
+export default function CreateNewPasswordScreen({ onBackToOtp, onResetSuccess }) {
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showToast, setShowToast] = useState(false);
+
+  const hasMinLength = newPassword.length >= 8;
+  const hasUppercase = /[A-Z]/.test(newPassword);
+  const hasNumber = /[0-9]/.test(newPassword);
+  const hasSymbol = /[^A-Za-z0-9]/.test(newPassword);
+  const passwordsMatch = newPassword.length > 0 && newPassword === confirmPassword;
+
+  const isFormValid = hasMinLength && hasUppercase && hasNumber && hasSymbol && passwordsMatch;
+
+  const handleResetPassword = () => {
+    if (!isFormValid) {
+      alert("Please fulfill all password requirements.");
+      return;
+    }
+
+    setShowToast(true);
+
+    setTimeout(() => {
+      setShowToast(false);
+      if (onResetSuccess) {
+        onResetSuccess();
+      }
+    }, 2000);
+  };
+
+  return (
+    <View style={styles.mainWrapper}>
+      
+      {showToast && (
+        <View style={styles.toastNotification}>
+          <Ionicons name="checkmark-circle" size={18} color="#0B6655" style={styles.toastIconSpace} />
+          <View style={styles.toastContent}>
+            <Text style={styles.toastTitleText}>Password reset success</Text>
+            <Text style={styles.toastBodyText}>
+              Your password has been updated securely. Redirecting to login...
+            </Text>
+          </View>
+        </View>
+      )}
+
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
+        
+        <View style={styles.navBar}>
+          <TouchableOpacity onPress={onBackToOtp} style={styles.backArrowButton}>
+            <Ionicons name="chevron-back" size={20} color="#1D2939" />
+          </TouchableOpacity>
+          <Text style={styles.navTitle}>Reset password</Text>
+          <View style={styles.navRightPlaceholder} />
+        </View>
+
+        <View style={styles.contentSection}>
+          <Text style={styles.mainTitle}>New password</Text>
+        </View>
+
+        <View style={styles.formContainer}>
+          <Text style={styles.inputLabel}>New password</Text>
+          <View style={[styles.inputWrapper, hasMinLength && styles.inputSuccessBorder]}>
+            <Feather name="lock" size={18} color="#667085" style={styles.inputIcon} />
+            <TextInput 
+              style={styles.textInput} 
+              placeholder="••••••••" 
+              placeholderTextColor="#98A2B3"
+              secureTextEntry
+              value={newPassword}
+              onChangeText={(text) => setNewPassword(text)}
+            />
+          </View>
+
+          <Text style={styles.inputLabel}>Confirm password</Text>
+          <View style={[styles.inputWrapper, passwordsMatch && styles.inputSuccessBorder]}>
+            <Feather name="lock" size={18} color="#667085" style={styles.inputIcon} />
+            <TextInput 
+              style={styles.textInput} 
+              placeholder="••••••••" 
+              placeholderTextColor="#98A2B3"
+              secureTextEntry
+              value={confirmPassword}
+              onChangeText={(text) => setConfirmPassword(text)}
+            />
+          </View>
+
+          <View style={styles.validationContainer}>
+            <View style={styles.validationRow}>
+              <Ionicons 
+                name={hasMinLength ? "checkmark-circle" : "ellipse-outline"} 
+                size={16} 
+                color={hasMinLength ? "#0B6655" : "#667085"} 
+                style={styles.checkIcon} 
+              />
+              <Text style={[styles.validationText, hasMinLength && styles.validationTextSuccess]}>
+                At least 8 characters
+              </Text>
+            </View>
+
+            <View style={styles.validationRow}>
+              <Ionicons 
+                name={hasUppercase ? "checkmark-circle" : "ellipse-outline"} 
+                size={16} 
+                color={hasUppercase ? "#0B6655" : "#667085"} 
+                style={styles.checkIcon} 
+              />
+              <Text style={[styles.validationText, hasUppercase && styles.validationTextSuccess]}>
+                One uppercase letter
+              </Text>
+            </View>
+
+            <View style={styles.validationRow}>
+              <Ionicons 
+                name={hasNumber ? "checkmark-circle" : "ellipse-outline"} 
+                size={16} 
+                color={hasNumber ? "#0B6655" : "#667085"} 
+                style={styles.checkIcon} 
+              />
+              <Text style={[styles.validationText, hasNumber && styles.validationTextSuccess]}>
+                One number
+              </Text>
+            </View>
+
+            <View style={styles.validationRow}>
+              <Ionicons 
+                name={hasSymbol ? "checkmark-circle" : "ellipse-outline"} 
+                size={16} 
+                color={hasSymbol ? "#0B6655" : "#667085"} 
+                style={styles.checkIcon} 
+              />
+              <Text style={[styles.validationText, hasSymbol && styles.validationTextSuccess]}>
+                One symbol
+              </Text>
+            </View>
+
+            <View style={styles.validationRow}>
+              <Ionicons 
+                name={passwordsMatch ? "checkmark-circle" : "ellipse-outline"} 
+                size={16} 
+                color={passwordsMatch ? "#0B6655" : "#667085"} 
+                style={styles.checkIcon} 
+              />
+              <Text style={[styles.validationText, passwordsMatch && styles.validationTextSuccess]}>
+                Both passwords match
+              </Text>
+            </View>
+          </View>
+
+          <TouchableOpacity 
+            style={[styles.resetButton, !isFormValid && styles.disabledResetButton]} 
+            onPress={handleResetPassword}
+            disabled={!isFormValid}
+          >
+            <Text style={styles.resetButtonText}>Reset password</Text>
+          </TouchableOpacity>
+        </View>
+
+      </ScrollView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  mainWrapper: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  scrollContainer: {
+    flexGrow: 1,
+    paddingBottom: 40,
+  },
+  toastNotification: {
+    position: 'absolute',
+    top: 20,
+    left: 20,
+    right: 20,
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#EAECF0',
+    zIndex: 9999,
+    shadowColor: '#101828',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  toastIconSpace: {
+    marginRight: 12,
+    marginTop: 2,
+  },
+  toastContent: {
+    flex: 1,
+  },
+  toastTitleText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#101828',
+  },
+  toastBodyText: {
+    fontSize: 13,
+    color: '#475467',
+    marginTop: 4,
+    lineHeight: 18,
+  },
+  navBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    height: 56,
+    borderBottomWidth: 1,
+    borderColor: '#EAECF0',
+    marginTop: 10,
+  },
+  backArrowButton: {
+    padding: 8,
+  },
+  navTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#101828',
+    textAlign: 'center',
+    flex: 1,
+  },
+  navRightPlaceholder: {
+    width: 40,
+  },
+  contentSection: {
+    alignItems: 'flex-start',
+    paddingHorizontal: 24,
+    marginTop: 30,
+    marginBottom: 20,
+  },
+  mainTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#101828',
+  },
+  formContainer: {
+    paddingHorizontal: 24,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#344054',
+    marginBottom: 6,
+    marginTop: 12,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D0D5DD',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    height: 48,
+  },
+  inputSuccessBorder: {
+    borderColor: '#0B6655',
+  },
+  inputIcon: {
+    marginRight: 10,
+  },
+  textInput: {
+    flex: 1,
+    color: '#1D2939',
+    fontSize: 15,
+  },
+  validationContainer: {
+    marginTop: 16,
+    marginBottom: 24,
+  },
+  validationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  checkIcon: {
+    marginRight: 8,
+  },
+  validationText: {
+    fontSize: 14,
+    color: '#667085',
+  },
+  validationTextSuccess: {
+    color: '#0B6655',
+  },
+  resetButton: {
+    backgroundColor: '#0B6655', 
+    borderRadius: 10,
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  disabledResetButton: {
+    backgroundColor: '#A3C7C1',
+  },
+  resetButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+});
