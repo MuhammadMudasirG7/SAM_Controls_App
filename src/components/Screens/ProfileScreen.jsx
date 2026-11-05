@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
+import { translations, getGlobalLang, subscribeLang, setGlobalLang } from '../../../i18n';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -27,12 +28,28 @@ export default function ProfileScreen({
     onNavigateToLeave,
     onNavigateToProfile 
 }) {
+    const [currentLang, setCurrentLang] = useState(getGlobalLang());
     const [profile, setProfile] = useState(userProfileData || null);
     const [loading, setLoading] = useState(!userProfileData);
     const [isFingerprintEnabled, setIsFingerprintEnabled] = useState(true);
     const [isHourlyEnabled, setIsHourlyEnabled] = useState(true);
     const [isLanguageSheetVisible, setIsLanguageSheetVisible] = useState(false);
-    const [selectedLanguage, setSelectedLanguage] = useState('English');
+    const [selectedLanguage, setSelectedLanguage] = useState(
+        currentLang === 'ur' ? 'اردو' : currentLang === 'ar' ? 'العربية' : 'English'
+    );
+
+    useEffect(() => {
+        const unsubscribe = subscribeLang((newLang) => {
+            setCurrentLang(newLang);
+            if (newLang === 'en') setSelectedLanguage('English');
+            else if (newLang === 'ur') setSelectedLanguage('اردو');
+            else if (newLang === 'ar') setSelectedLanguage('العربية');
+        });
+        return () => unsubscribe();
+    }, []);
+
+    const t = translations[currentLang];
+    const isRtl = currentLang === 'ur' || currentLang === 'ar';
 
     const empId = profile?.employeeId || 'EMP-10482';
     const empName = profile?.name || 'Faisal Al-Harbi';
@@ -60,7 +77,6 @@ export default function ProfileScreen({
         try {
             await SecureStore.setItemAsync('biometric_enabled_status', val ? 'true' : 'false');
             if (val) {
-                // Agar enable kiya hai toh current employee ID bhi save kar lein secure storage mein
                 await SecureStore.setItemAsync('saved_employee_id', empId);
             }
         } catch (err) {
@@ -101,7 +117,14 @@ export default function ProfileScreen({
         }
     };
 
-    const nameInitials = empName !== 'Loading Account...'
+    const changeAppLanguage = (langCode, langName) => {
+        setSelectedLanguage(langName);
+        setGlobalLang(langCode);
+        setIsLanguageSheetVisible(false);
+        updatePreferenceSetting('language', langName);
+    };
+
+    const nameInitials = empName !== t.loadingAccountText
         ? empName.split(' ').filter(Boolean).map(n => n).join('').substring(0, 2).toUpperCase()
         : 'FH';
 
@@ -114,7 +137,7 @@ export default function ProfileScreen({
     }
 
     return (
-        <View style={styles.mainWrapper}>
+        <View style={[styles.mainWrapper, { direction: isRtl ? 'rtl' : 'ltr' }]}>
             <View style={styles.navTopHeaderBar}>
                 <View style={styles.headerBackArrowLink} />
                 <View style={styles.headerRightBoxSpace} />
@@ -122,36 +145,45 @@ export default function ProfileScreen({
 
             <ScrollView contentContainerStyle={styles.scrollContentLayout} showsVerticalScrollIndicator={false}>
                 
-                <View style={styles.profileDetailsIdentityCard}>
-                    <View style={styles.avatarInitialCircleBadge}>
+                <View style={[styles.profileDetailsIdentityCard, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                    <View style={[styles.avatarInitialCircleBadge, isRtl ? { marginLeft: 14, marginRight: 0 } : { marginRight: 14, marginLeft: 0 }]}>
                         <Text style={styles.avatarInitialText}>{nameInitials}</Text>
                     </View>
-                    <View style={styles.profileDetailsContentBlock}>
-                        <Text style={styles.employeeNameTitle}>{empName}</Text>
-                        <Text style={styles.employeeIdLabel}>{empId}</Text>
-                        <Text style={styles.employeeRoleLabel}>{profile?.role || 'Site Engineer - Operations'}</Text>
+                    <View style={[styles.profileDetailsContentBlock, { alignItems: isRtl ? 'flex-end' : 'flex-start' }]}>
+                        <Text style={[styles.employeeNameTitle, { textAlign: isRtl ? 'right' : 'left' }]}>{empName}</Text>
+                        <Text style={[styles.employeeIdLabel, { textAlign: isRtl ? 'right' : 'left' }]}>{empId}</Text>
+                        <Text style={[styles.employeeRoleLabel, { textAlign: isRtl ? 'right' : 'left' }]}>{profile?.role || 'Site Engineer - Operations'}</Text>
                     </View>
                 </View>
 
-                <View style={styles.workSiteWhiteInformationCardBox}>
-                    <View style={styles.fileIconBadgeContainerSpace}><Ionicons name="document-text-outline" size={18} color="#0B6655" /></View>
-                    <View style={styles.workSiteDetailsTextContent}>
-                        <Text style={styles.workSiteLabelHeader}>Work site</Text>
-                        <Text style={styles.workSiteRealNameTitle}>{profile?.workSite || 'Al Olaya Operations Centre - Asia/Riyadh (UTC+3)'}</Text>
+                <View style={[styles.workSiteWhiteInformationCardBox, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                    <View style={[styles.fileIconBadgeContainerSpace, isRtl ? { marginLeft: 12, marginRight: 0 } : { marginRight: 12, marginLeft: 0 }]}><Ionicons name="document-text-outline" size={18} color="#0B6655" /></View>
+                    <View style={[styles.workSiteDetailsTextContent, { alignItems: isRtl ? 'flex-end' : 'flex-start' }]}>
+                        <Text style={[styles.workSiteLabelHeader, { textAlign: isRtl ? 'right' : 'left' }]}>{t.workSiteLabel}</Text>
+                        <Text style={[styles.workSiteRealNameTitle, { textAlign: isRtl ? 'right' : 'left' }]}>{profile?.workSite || 'Al Olaya Operations Centre - Asia/Riyadh (UTC+3)'}</Text>
                     </View>
                 </View>
 
-                <Text style={styles.settingsSectionHeaderLabel}>SETTINGS</Text>
+                <Text style={[styles.settingsSectionHeaderLabel, { textAlign: isRtl ? 'right' : 'left' }]}>{t.settingsSectionHeader}</Text>
 
                 <View style={styles.settingsGroupListOuterWhiteCardFrame}>
                     
-                    <TouchableOpacity style={styles.settingsRowContainerItemLink} onPress={onNavigateToChangePassword}>
-                        <View style={styles.innerRowLeftBlockRow}><View style={styles.innerRowIconCircleBadge}><Ionicons name="key-outline" size={18} color="#0B6655" /></View><Text style={styles.settingsRowMainLabelText}>Change password</Text></View>
-                        <Ionicons name="chevron-forward" size={16} color="#98A2B3" />
+                    <TouchableOpacity style={[styles.settingsRowContainerItemLink, { flexDirection: isRtl ? 'row-reverse' : 'row' }]} onPress={onNavigateToChangePassword}>
+                        <View style={[styles.innerRowLeftBlockRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                            <View style={[styles.innerRowIconCircleBadge, isRtl ? { marginLeft: 12, marginRight: 0 } : { marginRight: 12, marginLeft: 0 }]}><Ionicons name="key-outline" size={18} color="#0B6655" /></View>
+                            <Text style={[styles.settingsRowMainLabelText, { textAlign: isRtl ? 'right' : 'left' }]}>{t.changePasswordSetting}</Text>
+                        </View>
+                        <Ionicons name={isRtl ? "chevron-back" : "chevron-forward"} size={16} color="#98A2B3" />
                     </TouchableOpacity>
 
-                    <View style={styles.settingsRowContainerItemLink}>
-                        <View style={styles.innerRowLeftBlockRow}><View style={styles.innerRowIconCircleBadge}><Ionicons name="finger-print-outline" size={18} color="#0B6655" /></View><View><Text style={styles.settingsRowMainLabelText}>Fingerprint / Face login</Text><Text style={styles.settingsRowSubDescriptionLabelText}>Only on this phone</Text></View></View>
+                    <View style={[styles.settingsRowContainerItemLink, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                        <View style={[styles.innerRowLeftBlockRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                            <View style={[styles.innerRowIconCircleBadge, isRtl ? { marginLeft: 12, marginRight: 0 } : { marginRight: 12, marginLeft: 0 }]}><Ionicons name="finger-print-outline" size={18} color="#0B6655" /></View>
+                            <View style={{ alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
+                                <Text style={[styles.settingsRowMainLabelText, { textAlign: isRtl ? 'right' : 'left' }]}>{t.biometricSettingTitle}</Text>
+                                <Text style={[styles.settingsRowSubDescriptionLabelText, { textAlign: isRtl ? 'right' : 'left' }]}>{t.biometricSettingSub}</Text>
+                            </View>
+                        </View>
                         <Switch 
                             trackColor={{ false: '#E4E7EC', true: '#0B6655' }} 
                             thumbColor={Platform.OS === 'android' ? '#FFFFFF' : ''} 
@@ -160,8 +192,14 @@ export default function ProfileScreen({
                         />
                     </View>
 
-                    <View style={styles.settingsRowContainerItemLink}>
-                        <View style={styles.innerRowLeftBlockRow}><View style={styles.innerRowIconCircleBadge}><Ionicons name="time-outline" size={18} color="#0B6655" /></View><View><Text style={styles.settingsRowMainLabelText}>Hourly Presence</Text><Text style={styles.settingsRowSubDescriptionLabelText}>Every 60 min while checked in</Text></View></View>
+                    <View style={[styles.settingsRowContainerItemLink, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                        <View style={[styles.innerRowLeftBlockRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                            <View style={[styles.innerRowIconCircleBadge, isRtl ? { marginLeft: 12, marginRight: 0 } : { marginRight: 12, marginLeft: 0 }]}><Ionicons name="time-outline" size={18} color="#0B6655" /></View>
+                            <View style={{ alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
+                                <Text style={[styles.settingsRowMainLabelText, { textAlign: isRtl ? 'right' : 'left' }]}>{t.hourlyPresenceSettingTitle}</Text>
+                                <Text style={[styles.settingsRowSubDescriptionLabelText, { textAlign: isRtl ? 'right' : 'left' }]}>{t.hourlyPresenceSettingSub}</Text>
+                            </View>
+                        </View>
                         <Switch 
                             trackColor={{ false: '#E4E7EC', true: '#0B6655' }} 
                             thumbColor={Platform.OS === 'android' ? '#FFFFFF' : ''} 
@@ -173,30 +211,56 @@ export default function ProfileScreen({
                         />
                     </View>
 
-                    <TouchableOpacity style={styles.settingsRowContainerItemLink} onPress={() => setIsLanguageSheetVisible(true)}>
-                        <View style={styles.innerRowLeftBlockRow}><View style={styles.innerRowIconCircleBadge}><Ionicons name="globe-outline" size={18} color="#0B6655" /></View><View><Text style={styles.settingsRowMainLabelText}>Language</Text><Text style={styles.settingsRowSubDescriptionLabelText}>{selectedLanguage}</Text></View></View>
-                        <Ionicons name="chevron-forward" size={16} color="#98A2B3" />
+                    <TouchableOpacity style={[styles.settingsRowContainerItemLink, { flexDirection: isRtl ? 'row-reverse' : 'row' }]} onPress={() => setIsLanguageSheetVisible(true)}>
+                        <View style={[styles.innerRowLeftBlockRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                            <View style={[styles.innerRowIconCircleBadge, isRtl ? { marginLeft: 12, marginRight: 0 } : { marginRight: 12, marginLeft: 0 }]}><Ionicons name="globe-outline" size={18} color="#0B6655" /></View>
+                            <View style={{ alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
+                                <Text style={[styles.settingsRowMainLabelText, { textAlign: isRtl ? 'right' : 'left' }]}>{t.languageSettingTitle}</Text>
+                                <Text style={[styles.settingsRowSubDescriptionLabelText, { textAlign: isRtl ? 'right' : 'left' }]}>{selectedLanguage}</Text>
+                            </View>
+                        </View>
+                        <Ionicons name={isRtl ? "chevron-back" : "chevron-forward"} size={16} color="#98A2B3" />
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={styles.settingsRowContainerItemLink} onPress={onNavigateToPrivacy}>
-                        <View style={styles.innerRowLeftBlockRow}><View style={styles.innerRowIconCircleBadge}><Ionicons name="shield-checkmark-outline" size={18} color="#0B6655" /></View><View><Text style={styles.settingsRowMainLabelText}>Privacy & location consent</Text><Text style={styles.settingsRowSubDescriptionLabelText}>Accepted {profile?.consentDate || '22 Sep 2026'} · {profile?.consentVersion || 'v1.0'}</Text></View></View>
-                        <Ionicons name="chevron-forward" size={16} color="#98A2B3" />
+                    <TouchableOpacity style={[styles.settingsRowContainerItemLink, { flexDirection: isRtl ? 'row-reverse' : 'row' }]} onPress={onNavigateToPrivacy}>
+                        <View style={[styles.innerRowLeftBlockRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                            <View style={[styles.innerRowIconCircleBadge, isRtl ? { marginLeft: 12, marginRight: 0 } : { marginRight: 12, marginLeft: 0 }]}><Ionicons name="shield-checkmark-outline" size={18} color="#0B6655" /></View>
+                            <View style={{ alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
+                                <Text style={[styles.settingsRowMainLabelText, { textAlign: isRtl ? 'right' : 'left' }]}>{t.privacyConsentSettingTitle}</Text>
+                                <Text style={[styles.settingsRowSubDescriptionLabelText, { textAlign: isRtl ? 'right' : 'left' }]}>
+                                    {t.privacyConsentSettingSub(profile?.consentDate || '22 Sep 2026', profile?.consentVersion || 'v1.0')}
+                                </Text>
+                            </View>
+                        </View>
+                        <Ionicons name={isRtl ? "chevron-back" : "chevron-forward"} size={16} color="#98A2B3" />
                     </TouchableOpacity>
 
-                    <View style={styles.settingsRowContainerItemLink}>
-                        <View style={styles.innerRowLeftBlockRow}><View style={styles.innerRowIconCircleBadge}><Ionicons name="phone-portrait-outline" size={18} color="#0B6655" /></View><View><Text style={styles.settingsRowMainLabelText}>Server address</Text><Text style={styles.settingsRowSubDescriptionLabelText}>{serverAddress}</Text></View></View>
-                        <Ionicons name="lock-closed" size={14} color="#98A2B3" style={{ marginRight: 4 }} />
+                    <View style={[styles.settingsRowContainerItemLink, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                        <View style={[styles.innerRowLeftBlockRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                            <View style={[styles.innerRowIconCircleBadge, isRtl ? { marginLeft: 12, marginRight: 0 } : { marginRight: 12, marginLeft: 0 }]}><Ionicons name="phone-portrait-outline" size={18} color="#0B6655" /></View>
+                            <View style={{ alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
+                                <Text style={[styles.settingsRowMainLabelText, { textAlign: isRtl ? 'right' : 'left' }]}>{t.serverAddressSettingTitle}</Text>
+                                <Text style={[styles.settingsRowSubDescriptionLabelText, { textAlign: isRtl ? 'right' : 'left' }]}>{serverAddress}</Text>
+                            </View>
+                        </View>
+                        <Ionicons name="lock-closed" size={14} color="#98A2B3" style={[isRtl ? { marginRight: 4 } : { marginLeft: 4 }]} />
                     </View>
 
-                    <View style={[styles.settingsRowContainerItemLink, { borderBottomWidth: 0 }]}>
-                        <View style={styles.innerRowLeftBlockRow}><View style={styles.innerRowIconCircleBadge}><Ionicons name="information-circle-outline" size={18} color="#0B6655" /></View><View><Text style={styles.settingsRowMainLabelText}>App version</Text><Text style={styles.settingsRowSubDescriptionLabelText}>1.1.0 (214) - Dev</Text></View></View>
+                    <View style={[styles.settingsRowContainerItemLink, { flexDirection: isRtl ? 'row-reverse' : 'row', borderBottomWidth: 0 }]}>
+                        <View style={[styles.innerRowLeftBlockRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                            <View style={[styles.innerRowIconCircleBadge, isRtl ? { marginLeft: 12, marginRight: 0 } : { marginRight: 12, marginLeft: 0 }]}><Ionicons name="information-circle-outline" size={18} color="#0B6655" /></View>
+                            <View style={{ alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
+                                <Text style={[styles.settingsRowMainLabelText, { textAlign: isRtl ? 'right' : 'left' }]}>{t.appVersionSettingTitle}</Text>
+                                <Text style={[styles.settingsRowSubDescriptionLabelText, { textAlign: isRtl ? 'right' : 'left' }]}>{t.appVersionSettingSub}</Text>
+                            </View>
+                        </View>
                     </View>
 
                 </View>
 
-                <TouchableOpacity style={styles.signOutButtonOutlineBoxCard} onPress={onSignOut}>
-                    <Ionicons name="log-out-outline" size={18} color="#B42318" style={{ marginRight: 8 }} />
-                    <Text style={styles.signOutButtonOutlineBoxCardText}>Sign out</Text>
+                <TouchableOpacity style={[styles.signOutButtonOutlineBoxCard, { flexDirection: isRtl ? 'row-reverse' : 'row' }]} onPress={onSignOut}>
+                    <Ionicons name="log-out-outline" size={18} color="#B42318" style={[isRtl ? { marginLeft: 8 } : { marginRight: 8 }]} />
+                    <Text style={styles.signOutButtonOutlineBoxCardText}>{t.signOutBtnText}</Text>
                 </TouchableOpacity>
 
             </ScrollView>
@@ -205,31 +269,31 @@ export default function ProfileScreen({
                 <TouchableOpacity style={styles.modalOverlayDismissBackground} activeOpacity={1} onPress={() => setIsLanguageSheetVisible(false)}>
                     <View style={styles.bottomSheetFilterWindowContainer}>
                         <View style={styles.bottomSheetHeaderCenterIndicatorLineBar} />
-                        <Text style={styles.bottomSheetMainHeadingTitleText}>Language</Text>
+                        <Text style={[styles.bottomSheetMainHeadingTitleText, { textAlign: isRtl ? 'right' : 'left' }]}>{t.languageModalTitle}</Text>
                         
-                        <TouchableOpacity style={styles.languageSelectionListItemRow} onPress={() => { setSelectedLanguage('English'); setIsLanguageSheetVisible(false); updatePreferenceSetting('language', 'English'); }}>
+                        <TouchableOpacity style={[styles.languageSelectionListItemRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]} onPress={() => changeAppLanguage('en', 'English')}>
                             <Text style={[styles.languageOptionNameText, selectedLanguage === 'English' && { color: '#0B6655' }]}>English</Text>
                             {selectedLanguage === 'English' && <Ionicons name="checkmark" size={18} color="#0B6655" />}
                         </TouchableOpacity>
 
-                        <TouchableOpacity style={styles.languageSelectionListItemRow} onPress={() => { setSelectedLanguage('العربية'); setIsLanguageSheetVisible(false); updatePreferenceSetting('language', 'العربية'); }}>
-                            <Text style={[styles.languageOptionNameText, selectedLanguage === 'العربية' && { color: '#0B6655' }]}>العربية</Text>
-                            {selectedLanguage === 'العربية' && <Ionicons name="checkmark" size={18} color="#0B6655" />}
+                        <TouchableOpacity style={[styles.languageSelectionListItemRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]} onPress={() => changeAppLanguage('ur', 'اردو')}>
+                            <Text style={[styles.languageOptionNameText, selectedLanguage === 'اردو' && { color: '#0B6655' }]}>اردو</Text>
+                            {selectedLanguage === 'اردو' && <Ionicons name="checkmark" size={18} color="#0B6655" />}
                         </TouchableOpacity>
 
-                        <TouchableOpacity style={[styles.languageSelectionListItemRow, { borderBottomWidth: 0 }]} onPress={() => { setSelectedLanguage('Français'); setIsLanguageSheetVisible(false); updatePreferenceSetting('language', 'Français'); }}>
-                            <Text style={[styles.languageOptionNameText, selectedLanguage === 'Français' && { color: '#0B6655' }]}>Français</Text>
-                            {selectedLanguage === 'Français' && <Ionicons name="checkmark" size={18} color="#0B6655" />}
+                        <TouchableOpacity style={[styles.languageSelectionListItemRow, { flexDirection: isRtl ? 'row-reverse' : 'row', borderBottomWidth: 0 }]} onPress={() => changeAppLanguage('ar', 'العربية')}>
+                            <Text style={[styles.languageOptionNameText, selectedLanguage === 'العربية' && { color: '#0B6655' }]}>العربية</Text>
+                            {selectedLanguage === 'العربية' && <Ionicons name="checkmark" size={18} color="#0B6655" />}
                         </TouchableOpacity>
                     </View>
                 </TouchableOpacity>
             </Modal>
 
-            <View style={styles.bottomTabStickyNavBarContainer}>
-                <TouchableOpacity style={styles.tabBarItemActionLink} onPress={onNavigateHome}><Ionicons name="home" size={22} color="#98A2B3" /><Text style={styles.tabBarItemLabelText}>Home</Text></TouchableOpacity>
-                <TouchableOpacity style={styles.tabBarItemActionLink} onPress={onNavigateToAttendance}><Ionicons name="calendar" size={22} color="#98A2B3" /><Text style={styles.tabBarItemLabelText}>Attendance</Text></TouchableOpacity>
-                <TouchableOpacity style={styles.tabBarItemActionLink} onPress={onNavigateToLeave}><Ionicons name="document-text" size={22} color="#98A2B3" /><Text style={styles.tabBarItemLabelText}>Leave</Text></TouchableOpacity>
-                <TouchableOpacity style={styles.tabBarItemActionLink} onPress={onNavigateToProfile}><Ionicons name="person" size={22} color="#0B6655" /><Text style={[styles.tabBarItemLabelText, { color: '#0B6655' }]}>Profile</Text></TouchableOpacity>
+            <View style={[styles.bottomTabStickyNavBarContainer, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                <TouchableOpacity style={styles.tabBarItemActionLink} onPress={onNavigateHome}><Ionicons name="home" size={22} color="#98A2B3" /><Text style={styles.tabBarItemLabelText}>{t.navHome}</Text></TouchableOpacity>
+                <TouchableOpacity style={styles.tabBarItemActionLink} onPress={onNavigateToAttendance}><Ionicons name="calendar" size={22} color="#98A2B3" /><Text style={styles.tabBarItemLabelText}>{t.navAttendance}</Text></TouchableOpacity>
+                <TouchableOpacity style={styles.tabBarItemActionLink} onPress={onNavigateToLeave}><Ionicons name="document-text" size={22} color="#98A2B3" /><Text style={styles.tabBarItemLabelText}>{t.navLeave}</Text></TouchableOpacity>
+                <TouchableOpacity style={styles.tabBarItemActionLink} onPress={onNavigateToProfile}><Ionicons name="person" size={22} color="#0B6655" /><Text style={[styles.tabBarItemLabelText, { color: '#0B6655' }]}>{t.navProfile}</Text></TouchableOpacity>
             </View>
         </View>
     );
@@ -242,14 +306,14 @@ const styles = StyleSheet.create({
     headerRightBoxSpace: { width: 28 },
     scrollContentLayout: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 110 },
     profileDetailsIdentityCard: { flexDirection: 'row', backgroundColor: '#FFFFFF', borderRadius: 22, padding: 18, width: '100%', borderWidth: 1, borderColor: '#EEF0F2', shadowColor: '#101828', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 10, elevation: 2 },
-    avatarInitialCircleBadge: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#0B6655', justifyContent: 'center', alignItems: 'center', marginRight: 14 },
+    avatarInitialCircleBadge: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#0B6655', justifyContent: 'center', alignItems: 'center' },
     avatarInitialText: { color: '#FFFFFF', fontSize: 20, fontWeight: '700' },
     profileDetailsContentBlock: { flex: 1, justifyContent: 'center' },
     employeeNameTitle: { fontSize: 19, fontWeight: '700', color: '#101828' },
     employeeIdLabel: { fontSize: 13, color: '#475467', marginTop: 2, fontWeight: '600' },
     employeeRoleLabel: { fontSize: 12, color: '#98A2B3', marginTop: 3, fontWeight: '500' },
     workSiteWhiteInformationCardBox: { flexDirection: 'row', backgroundColor: '#FFFFFF', borderRadius: 16, padding: 14, width: '100%', borderWidth: 1, borderColor: '#EEF0F2', marginTop: 12, alignItems: 'center' },
-    fileIconBadgeContainerSpace: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#F0F9F8', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+    fileIconBadgeContainerSpace: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#F0F9F8', justifyContent: 'center', alignItems: 'center' },
     workSiteDetailsTextContent: { flex: 1 },
     workSiteLabelHeader: { fontSize: 11, color: '#667085', fontWeight: '500' },
     workSiteRealNameTitle: { fontSize: 13, fontWeight: '600', color: '#344054', lineHeight: 18 },
@@ -257,7 +321,7 @@ const styles = StyleSheet.create({
     settingsGroupListOuterWhiteCardFrame: { backgroundColor: '#FFFFFF', borderRadius: 16, borderWidth: 1, borderColor: '#EEF0F2', width: '100%', overflow: 'hidden' },
     settingsRowContainerItemLink: { flexDirection: 'row', padding: 14, alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderColor: '#F2F4F7' },
     innerRowLeftBlockRow: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-    innerRowIconCircleBadge: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#F0F9F8', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+    innerRowIconCircleBadge: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#F0F9F8', justifyContent: 'center', alignItems: 'center' },
     settingsRowMainLabelText: { fontSize: 14, fontWeight: '700', color: '#101828' },
     settingsRowSubDescriptionLabelText: { fontSize: 12, color: '#667085', marginTop: 2, fontWeight: '500' },
     signOutButtonOutlineBoxCard: { flexDirection: 'row', borderColor: '#D0D5DD', borderWidth: 1, borderRadius: 12, height: 48, width: '100%', justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF', marginTop: 16 },

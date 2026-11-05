@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import * as SecureStore from 'expo-secure-store';
+import { translations, getGlobalLang, subscribeLang } from './i18n';
 
 import LoginScreen from './src/components/Screens/LoginScreen';
 import ForgotPasswordScreen from './src/components/Screens/ForgotPasswordScreen';
@@ -20,16 +21,27 @@ import ProfileScreen from './src/components/Screens/ProfileScreen';
 import ChangePasswordScreen from './src/components/Screens/ChangePasswordScreen';
 import LocationPrivacyScreen from './src/components/Screens/LocationPrivacyScreen';
 
-// 🛠️ Admin Dashboard Screen Import karein
+// 🛠️ Admin Dashboard Screen Import
 import AdminDashboardScreen from './src/components/Screens/AdminDashboardScreen';
 
 export default function App() {
+  const [currentLang, setCurrentLang] = useState(getGlobalLang());
   const [currentScreen, setCurrentScreen] = useState('login');
   const [loginState, setLoginState] = useState('default');
-  const [serverAddress, setServerAddress] = useState('http://192.168.1.12:8081');
+  const [serverAddress, setServerAddress] = useState('http://192.168.100.199:8081');
   const [biometricTargetType, setBiometricTargetType] = useState('fingerprint');
   const [savedEmployeeId, setSavedEmployeeId] = useState('EMP-10482');
   const [globalUserData, setGlobalUserData] = useState(null);
+
+  useEffect(() => {
+    const unsubscribe = subscribeLang((newLang) => {
+      setCurrentLang(newLang);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const t = translations[currentLang];
+  const isRtl = currentLang === 'ur' || currentLang === 'ar';
 
   const handleLoginSuccess = async (userPayload) => {
     try {
@@ -47,7 +59,6 @@ export default function App() {
         });
       }
 
-      // 🔍 Check if user is Admin, then redirect to admin_dashboard directly
       if (userPayload?.role === 'admin' || userPayload?.employeeId === 'ADMIN-01') {
         setCurrentScreen('admin_dashboard');
         return;
@@ -68,12 +79,28 @@ export default function App() {
     setCurrentScreen('dashboard');
   };
 
+  const isRestrictedScreen = 
+    currentScreen !== 'dashboard' && 
+    currentScreen !== 'admin_dashboard' && 
+    currentScreen !== 'biometric_setup' && 
+    currentScreen !== 'check_in' && 
+    currentScreen !== 'check_out' && 
+    currentScreen !== 'hourly_presence' && 
+    currentScreen !== 'attendance' && 
+    currentScreen !== 'leave_request' && 
+    currentScreen !== 'my_leave_requests' && 
+    currentScreen !== 'profile' && 
+    currentScreen !== 'change_password' && 
+    currentScreen !== 'location_privacy';
+
   return (
     <SafeAreaProvider>
-      <SafeAreaView style={styles.container}>
-        {currentScreen !== 'dashboard' && currentScreen !== 'admin_dashboard' && currentScreen !== 'biometric_setup' && currentScreen !== 'check_in' && currentScreen !== 'check_out' && currentScreen !== 'hourly_presence' && currentScreen !== 'attendance' && currentScreen !== 'leave_request' && currentScreen !== 'my_leave_requests' && currentScreen !== 'profile' && currentScreen !== 'change_password' && currentScreen !== 'location_privacy' && (
+      <SafeAreaView style={[styles.container, { direction: isRtl ? 'rtl' : 'ltr' }]}>
+        {isRestrictedScreen && (
           <View style={styles.topBanner}>
-            <Text style={styles.topBannerText}>⚠️ Not secure — test accounts only</Text>
+            <Text style={styles.topBannerText}>
+              {currentLang === 'ur' ? '⚠️ غیر محفوظ — صرف ٹیسٹ اکاؤنٹس' : currentLang === 'ar' ? '⚠️ غير آمن — حسابات الاختبار فقط' : '⚠️ Not secure — test accounts only'}
+            </Text>
           </View>
         )}
 
@@ -139,7 +166,6 @@ export default function App() {
           />
         )}
 
-        {/* 🛠️ Admin Dashboard Screen Route */}
         {currentScreen === 'admin_dashboard' && (
           <AdminDashboardScreen
             onLogout={() => setCurrentScreen('login')}

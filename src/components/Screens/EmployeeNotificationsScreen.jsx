@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, Image, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { translations, getGlobalLang, subscribeLang } from '../../../i18n';
 
 const PLACEHOLDER_AVATAR = 'https://via.placeholder.com/150';
 
@@ -10,9 +11,20 @@ export default function EmployeeNotificationsScreen({
     currentEmployeeId, 
     currentEmployeeName 
 }) {
+    const [currentLang, setCurrentLang] = useState(getGlobalLang());
     const [safeNotifications, setSafeNotifications] = useState(notifications || []);
     const [isSelectionMode, setIsSelectionMode] = useState(false);
     const [selectedIds, setSelectedIds] = useState([]);
+
+    useEffect(() => {
+        const unsubscribe = subscribeLang((newLang) => {
+            setCurrentLang(newLang);
+        });
+        return () => unsubscribe();
+    }, []);
+
+    const t = translations[currentLang];
+    const isRtl = currentLang === 'ur' || currentLang === 'ar';
 
     const handleLongPress = (id) => {
         setIsSelectionMode(true);
@@ -43,12 +55,12 @@ export default function EmployeeNotificationsScreen({
 
     const handleDeleteSelected = () => {
         Alert.alert(
-            "Delete Notifications",
-            `Are you sure you want to delete ${selectedIds.length} notification(s)?`,
+            t.deleteModalTitle,
+            t.deleteModalMsg(selectedIds.length),
             [
-                { text: "Cancel", style: "cancel" },
+                { text: t.cancelBtn, style: "cancel" },
                 {
-                    text: "Delete",
+                    text: t.deleteBtn,
                     style: "destructive",
                     onPress: () => {
                         const remaining = safeNotifications.filter(item => !selectedIds.includes(item.id || item._id));
@@ -62,19 +74,19 @@ export default function EmployeeNotificationsScreen({
     };
 
     return (
-        <View style={styles.container}>
-            <View style={styles.header}>
+        <View style={[styles.container, { direction: isRtl ? 'rtl' : 'ltr' }]}>
+            <View style={[styles.header, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                 <TouchableOpacity onPress={onBack} style={styles.backBtn}>
-                    <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+                    <Ionicons name={isRtl ? "arrow-forward" : "arrow-back"} size={24} color="#FFFFFF" />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>
-                    {isSelectionMode ? `${selectedIds.length} Selected` : 'Notifications'}
+                    {isSelectionMode ? t.selectedCount(selectedIds.length) : t.notificationsTitle}
                 </Text>
 
                 {isSelectionMode ? (
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <TouchableOpacity onPress={handleSelectAll} style={{ marginRight: 15 }}>
-                            <Text style={{ color: '#FFF', fontSize: 13, fontWeight: '700' }}>Select All</Text>
+                    <View style={{ flexDirection: isRtl ? 'row-reverse' : 'row', alignItems: 'center' }}>
+                        <TouchableOpacity onPress={handleSelectAll} style={{ [isRtl ? 'marginLeft' : 'marginRight']: 15, [isRtl ? 'marginRight' : 'marginLeft']: 0 }}>
+                            <Text style={{ color: '#FFF', fontSize: 13, fontWeight: '700' }}>{t.selectAllBtn}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity onPress={handleDeleteSelected} style={styles.deleteHeaderBtn}>
                             <Ionicons name="trash-outline" size={20} color="#B42318" />
@@ -91,8 +103,8 @@ export default function EmployeeNotificationsScreen({
                         <View style={styles.emptyIconBox}>
                             <Ionicons name="notifications-off-outline" size={48} color="#98A2B3" />
                         </View>
-                        <Text style={styles.emptyTitle}>No Notifications</Text>
-                        <Text style={styles.emptySubtitle}>You don't have any leave status updates yet.</Text>
+                        <Text style={styles.emptyTitle}>{t.noNotificationsTitle}</Text>
+                        <Text style={styles.emptySubtitle}>{t.noNotificationsSubtitle}</Text>
                     </View>
                 ) : (
                     safeNotifications.map((item, index) => {
@@ -128,7 +140,6 @@ export default function EmployeeNotificationsScreen({
                         let cleanLeaveTitle = rawLeaveType.replace(/leave/gi, '').trim();
                         const finalLeaveHeaderTitle = `${cleanLeaveTitle} Leave ${statusText}`.toUpperCase();
 
-                        // 🟢 Use logged-in user details if available, fallback to item details
                         const displayName = currentEmployeeName || item.name || 'User';
                         const displayId = currentEmployeeId || item.employeeId || 'EMP-10482';
 
@@ -140,39 +151,38 @@ export default function EmployeeNotificationsScreen({
                                 onPress={() => handleCardPress(itemId)}
                                 style={[
                                     styles.notifCard, 
-                                    { borderLeftColor: accentColor },
+                                    isRtl ? { borderRightWidth: 6, borderLeftWidth: 0, borderRightColor: accentColor } : { borderLeftWidth: 6, borderLeftColor: accentColor },
                                     isSelected && styles.selectedCardStyle
                                 ]}
                             >
-                                <View style={styles.cardHeaderRow}>
-                                    <View style={styles.headerLeft}>
+                                <View style={[styles.cardHeaderRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                                    <View style={[styles.headerLeft, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                                         {isSelectionMode ? (
-                                            <View style={[styles.checkboxCircle, isSelected && styles.checkedCircle]}>
+                                            <View style={[styles.checkboxCircle, isSelected && styles.checkedCircle, { [isRtl ? 'marginLeft' : 'marginRight']: 10, [isRtl ? 'marginRight' : 'marginLeft']: 0 }]}>
                                                 {isSelected && <Ionicons name="checkmark" size={12} color="#FFF" />}
                                             </View>
                                         ) : (
-                                            <Ionicons name={iconName} size={20} color={statusTxtColor} style={{ marginRight: 10 }} />
+                                            <Ionicons name={iconName} size={20} color={statusTxtColor} style={{ [isRtl ? 'marginLeft' : 'marginRight']: 10, [isRtl ? 'marginRight' : 'marginLeft']: 0 }} />
                                         )}
-                                        <Text style={styles.notifTitle}>{finalLeaveHeaderTitle}</Text>
+                                        <Text style={[styles.notifTitle, { textAlign: isRtl ? 'right' : 'left' }]}>{finalLeaveHeaderTitle}</Text>
                                     </View>
                                     <View style={[styles.statusBadge, { backgroundColor: statusBgColor }]}>
                                         <Text style={[styles.statusBadgeText, { color: statusTxtColor }]}>{statusText}</Text>
                                     </View>
                                 </View>
 
-                                {/* 🟢 Fully Dynamic Logged-in User Info */}
-                                <View style={styles.userInfoRow}>
-                                    <Image source={{ uri: item.avatar || PLACEHOLDER_AVATAR }} style={styles.avatar} />
-                                    <View style={styles.userInfoText}>
-                                        <Text style={styles.userNameText}>{displayName}</Text>
+                                <View style={[styles.userInfoRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                                    <Image source={{ uri: item.avatar || PLACEHOLDER_AVATAR }} style={[styles.avatar, { [isRtl ? 'marginLeft' : 'marginRight']: 12, [isRtl ? 'marginRight' : 'marginLeft']: 0 }]} />
+                                    <View style={[styles.userInfoText, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                                        <Text style={[styles.userNameText, { [isRtl ? 'marginLeft' : 'marginRight']: 6, [isRtl ? 'marginRight' : 'marginLeft']: 0 }]}>{displayName}</Text>
                                         <Text style={styles.empIdText}>({displayId})</Text>
                                     </View>
                                 </View>
 
-                                <View style={styles.detailsRow}>
-                                    <View style={styles.detailItem}>
-                                        <Ionicons name="calendar-outline" size={14} color="#667085" style={{ marginRight: 6 }} />
-                                        <Text style={styles.detailText}>Dates: {item.fromDate || item.dates || 'N/A'}</Text>
+                                <View style={[styles.detailsRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                                    <View style={[styles.detailItem, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                                        <Ionicons name="calendar-outline" size={14} color="#667085" style={{ [isRtl ? 'marginLeft' : 'marginRight']: 6, [isRtl ? 'marginRight' : 'marginLeft']: 0 }} />
+                                        <Text style={styles.detailText}>{t.datesLabel} {item.fromDate || item.dates || 'N/A'}</Text>
                                     </View>
                                     <Text style={styles.timeAgoText}>{timeAgo}</Text>
                                 </View>
@@ -193,19 +203,19 @@ const styles = StyleSheet.create({
     headerTitle: { fontSize: 20, fontWeight: '700', color: '#FFFFFF', flex: 1, textAlign: 'center' },
     deleteHeaderBtn: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#FEE4E2', justifyContent: 'center', alignItems: 'center' },
     scrollArea: { padding: 16, alignItems: 'stretch' },
-    notifCard: { backgroundColor: '#FFFFFF', borderRadius: 12, marginBottom: 16, padding: 16, borderLeftWidth: 6, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 },
+    notifCard: { backgroundColor: '#FFFFFF', borderRadius: 12, marginBottom: 16, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 },
     selectedCardStyle: { backgroundColor: '#F0FDF4', borderColor: '#0B6655', borderWidth: 1 },
-    checkboxCircle: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: '#D0D5DD', marginRight: 10, justifyContent: 'center', alignItems: 'center' },
+    checkboxCircle: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: '#D0D5DD', justifyContent: 'center', alignItems: 'center' },
     checkedCircle: { backgroundColor: '#0B6655', borderColor: '#0B6655' },
     cardHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-    headerLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 },
+    headerLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
     notifTitle: { fontSize: 13, fontWeight: '700', color: '#101828' },
     statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
     statusBadgeText: { fontSize: 11, fontWeight: '700' },
     userInfoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: '#EAECF0' },
-    avatar: { width: 38, height: 38, borderRadius: 19, marginRight: 12 },
+    avatar: { width: 38, height: 38, borderRadius: 19 },
     userInfoText: { flex: 1, flexDirection: 'row', alignItems: 'center' },
-    userNameText: { fontSize: 14, fontWeight: '600', color: '#101828', marginRight: 6 },
+    userNameText: { fontSize: 14, fontWeight: '600', color: '#101828' },
     empIdText: { fontSize: 12, color: '#667085', fontWeight: '500' },
     detailsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     detailItem: { flexDirection: 'row', alignItems: 'center' },

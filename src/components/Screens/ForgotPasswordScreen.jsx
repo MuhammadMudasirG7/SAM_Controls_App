@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   StyleSheet, 
   Text, 
@@ -8,10 +8,22 @@ import {
   ScrollView 
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
+import { translations, getGlobalLang, subscribeLang } from '../../../i18n';
 
 export default function ForgotPasswordScreen({ onBackToLogin, onNavigateToOtp, serverAddress }) {
+  const [currentLang, setCurrentLang] = useState(getGlobalLang());
   const [employeeId, setEmployeeId] = useState('');
   const [errorState, setErrorState] = useState('default');
+
+  useEffect(() => {
+    const unsubscribe = subscribeLang((newLang) => {
+      setCurrentLang(newLang);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const t = translations[currentLang];
+  const isRtl = currentLang === 'ur' || currentLang === 'ar';
 
   const handleSendCode = async () => {
     if (!employeeId) {
@@ -47,13 +59,13 @@ export default function ForgotPasswordScreen({ onBackToLogin, onNavigateToOtp, s
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.scrollContainer}>
+    <ScrollView contentContainerStyle={[styles.scrollContainer, { direction: isRtl ? 'rtl' : 'ltr' }]}>
       
-      <View style={styles.navBar}>
+      <View style={[styles.navBar, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
         <TouchableOpacity onPress={onBackToLogin} style={styles.backArrowButton}>
-          <Ionicons name="chevron-back" size={20} color="#1D2939" />
+          <Ionicons name={isRtl ? "chevron-forward" : "chevron-back"} size={20} color="#1D2939" />
         </TouchableOpacity>
-        <Text style={styles.navTitle}>Forgot password</Text>
+        <Text style={styles.navTitle}>{t.forgotPassTitle}</Text>
         <View style={styles.navRightPlaceholder} />
       </View>
 
@@ -63,28 +75,28 @@ export default function ForgotPasswordScreen({ onBackToLogin, onNavigateToOtp, s
         </View>
       </View>
 
-      <View style={styles.contentSection}>
-        <Text style={styles.mainTitle}>Reset password</Text>
-        <Text style={styles.descriptionText}>
-          Enter your Employee ID. If it has an email on file, we'll send you a 6-digit code.
+      <View style={[styles.contentSection, { alignItems: isRtl ? 'flex-end' : 'center' }]}>
+        <Text style={[styles.mainTitle, { textAlign: isRtl ? 'right' : 'center' }]}>{t.resetPassHeading}</Text>
+        <Text style={[styles.descriptionText, { textAlign: isRtl ? 'right' : 'center' }]}>
+          {t.forgotPassDesc}
         </Text>
       </View>
 
       {errorState === 'server_error' && (
-        <View style={styles.serverErrorBanner}>
-          <Ionicons name="warning-outline" size={18} color="#B42318" style={styles.errorIconSpace} />
-          <Text style={styles.serverErrorText}>
-            We couldn't send a code right now. Try again in a few minutes.
+        <View style={[styles.serverErrorBanner, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+          <Ionicons name="warning-outline" size={18} color="#B42318" style={[styles.errorIconSpace, { [isRtl ? 'marginLeft' : 'marginRight']: 10, [isRtl ? 'marginRight' : 'marginLeft']: 0 }]} />
+          <Text style={[styles.serverErrorText, { textAlign: isRtl ? 'right' : 'left' }]}>
+            {t.serverErrorMsg}
           </Text>
         </View>
       )}
 
       <View style={styles.formContainer}>
-        <Text style={styles.inputLabel}>Employee ID</Text>
-        <View style={[styles.inputWrapper, errorState === 'server_error' && styles.inputErrorBorder]}>
-          <Feather name="user" size={18} color="#667085" style={styles.inputIcon} />
+        <Text style={[styles.inputLabel, { textAlign: isRtl ? 'right' : 'left' }]}>{t.employeeIdLabel}</Text>
+        <View style={[styles.inputWrapper, { flexDirection: isRtl ? 'row-reverse' : 'row' }, errorState === 'server_error' && styles.inputErrorBorder]}>
+          <Feather name="user" size={18} color="#667085" style={[styles.inputIcon, { [isRtl ? 'marginLeft' : 'marginRight']: 10, [isRtl ? 'marginRight' : 'marginLeft']: 0 }]} />
           <TextInput 
-            style={styles.textInput} 
+            style={[styles.textInput, { textAlign: isRtl ? 'right' : 'left' }]} 
             placeholder="EMP-10482" 
             placeholderTextColor="#98A2B3"
             value={employeeId}
@@ -93,12 +105,12 @@ export default function ForgotPasswordScreen({ onBackToLogin, onNavigateToOtp, s
         </View>
 
         <TouchableOpacity style={styles.sendCodeButton} onPress={handleSendCode}>
-          <Text style={styles.sendCodeButtonText}>Send code</Text>
+          <Text style={styles.sendCodeButtonText}>{t.sendCodeBtn}</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.backRedirectLink} onPress={onBackToLogin}>
-          <Ionicons name="chevron-back" size={14} color="#0B6655" style={styles.backIconSpace} />
-          <Text style={styles.backRedirectText}>Back to login</Text>
+        <TouchableOpacity style={[styles.backRedirectLink, { flexDirection: isRtl ? 'row-reverse' : 'row' }]} onPress={onBackToLogin}>
+          <Ionicons name={isRtl ? "chevron-forward" : "chevron-back"} size={14} color="#0B6655" style={[styles.backIconSpace, { [isRtl ? 'marginLeft' : 'marginRight']: 4, [isRtl ? 'marginRight' : 'marginLeft']: 0 }]} />
+          <Text style={styles.backRedirectText}>{t.backToLogin}</Text>
         </TouchableOpacity>
       </View>
 
@@ -176,7 +188,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   errorIconSpace: {
-    marginRight: 10,
     alignSelf: 'flex-start',
     marginTop: 1,
   },
@@ -210,9 +221,7 @@ const styles = StyleSheet.create({
   inputErrorBorder: {
     borderColor: '#D92D20',
   },
-  inputIcon: {
-    marginRight: 10,
-  },
+  inputIcon: {},
   textInput: {
     flex: 1,
     color: '#1D2939',
@@ -238,9 +247,7 @@ const styles = StyleSheet.create({
     marginTop: 24,
     padding: 8,
   },
-  backIconSpace: {
-    marginRight: 4,
-  },
+  backIconSpace: {},
   backRedirectText: {
     color: '#0B6655',
     fontSize: 14,

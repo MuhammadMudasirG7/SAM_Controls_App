@@ -1,45 +1,70 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { translations, getGlobalLang, subscribeLang } from '../../../i18n';
 
 export default function AdminNotificationsScreen({ notifications, onBack, onSelectNotificationUser }) {
-    // Safe check agar notifications undefined ho
-    const safeNotifications = notifications || [];
+    const [currentLang, setCurrentLang] = useState(getGlobalLang());
+    const [filteredNotifications, setFilteredNotifications] = useState([]);
+
+    useEffect(() => {
+        const unsubscribe = subscribeLang((newLang) => {
+            setCurrentLang(newLang);
+        });
+        return () => unsubscribe();
+    }, []);
+
+    const t = translations[currentLang];
+    const isRtl = currentLang === 'ur' || currentLang === 'ar';
+
+    useEffect(() => {
+        const safeNotifications = notifications || [];
+        const now = new Date().getTime();
+        const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+        const validNotifs = safeNotifications.filter((item) => {
+            if (!item.createdAt && !item.timestamp) return true;
+            const itemTime = new Date(item.createdAt || item.timestamp).getTime();
+            return (now - itemTime) < ONE_DAY_MS;
+        });
+
+        setFilteredNotifications(validNotifs);
+    }, [notifications]);
 
     return (
-        <View style={styles.container}>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={onBack} style={styles.backBtn}>
-                    <Ionicons name="arrow-back" size={22} color="#101828" />
+        <View style={[styles.container, { direction: isRtl ? 'rtl' : 'ltr' }]}>
+            <View style={[styles.header, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                <TouchableOpacity onPress={onBack} style={[styles.backBtn, { [isRtl ? 'marginLeft' : 'marginRight']: 12 }]}>
+                    <Ionicons name={isRtl ? "arrow-forward" : "arrow-back"} size={22} color="#101828" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Leave Notifications</Text>
+                <Text style={styles.headerTitle}>{t.leaveNotifications}</Text>
             </View>
 
             <ScrollView contentContainerStyle={styles.scrollArea} showsVerticalScrollIndicator={false}>
-                {safeNotifications.length === 0 ? (
+                {filteredNotifications.length === 0 ? (
                     <View style={styles.emptyContainer}>
                         <View style={styles.emptyIconBox}>
                             <Ionicons name="notifications-off-outline" size={28} color="#0B6655" />
                         </View>
-                        <Text style={styles.emptyTitle}>No leave applications yet</Text>
-                        <Text style={styles.emptySubtitle}>When employees apply for leave, their requests will appear here instantly.</Text>
+                        <Text style={styles.emptyTitle}>{t.noLeaveAppsYet}</Text>
+                        <Text style={styles.emptySubtitle}>{t.noLeaveAppsSub}</Text>
                     </View>
                 ) : (
-                    safeNotifications.map((item) => (
+                    filteredNotifications.map((item, index) => (
                         <TouchableOpacity 
-                            key={item.id} 
-                            style={styles.notifCard}
+                            key={item.id || item._id || index} 
+                            style={[styles.notifCard, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}
                             onPress={() => onSelectNotificationUser(item.employeeId)}
                         >
                             <View style={styles.iconBox}>
                                 <Ionicons name="calendar-outline" size={20} color="#0B6655" />
                             </View>
-                            <View style={{ flex: 1, marginLeft: 12 }}>
+                            <View style={{ flex: 1, [isRtl ? 'marginRight' : 'marginLeft']: 12, alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
                                 <Text style={styles.notifTitle}>{item.name} ({item.employeeId})</Text>
-                                <Text style={styles.notifMsg}>{item.message}</Text>
-                                <Text style={styles.notifTime}>{item.time}</Text>
+                                <Text style={[styles.notifMsg, { textAlign: isRtl ? 'right' : 'left' }]}>{item.message}</Text>
+                                <Text style={styles.notifTime}>{item.time || t.justNow}</Text>
                             </View>
-                            <Ionicons name="chevron-forward" size={16} color="#98A2B3" />
+                            <Ionicons name={isRtl ? "chevron-back" : "chevron-forward"} size={16} color="#98A2B3" />
                         </TouchableOpacity>
                     ))
                 )}
@@ -51,7 +76,7 @@ export default function AdminNotificationsScreen({ notifications, onBack, onSele
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F7F9FA', paddingTop: Platform.OS === 'android' ? 24 : 0 },
     header: { flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: '#FFF', borderBottomWidth: 1, borderColor: '#EAECF0' },
-    backBtn: { marginRight: 12 },
+    backBtn: {},
     headerTitle: { fontSize: 18, fontWeight: '700', color: '#101828' },
     scrollArea: { padding: 16, alignItems: 'stretch' },
     notifCard: { flexDirection: 'row', backgroundColor: '#FFF', padding: 14, borderRadius: 12, marginBottom: 10, alignItems: 'center', borderWidth: 1, borderColor: '#EAECF0', width: '100%' },

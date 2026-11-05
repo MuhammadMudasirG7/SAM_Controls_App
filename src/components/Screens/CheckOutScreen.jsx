@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Dimensions, ActivityIndicator, Linking, AppState, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
+import { translations, getGlobalLang, subscribeLang } from '../../../i18n';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -26,6 +27,7 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 }
 
 export default function CheckOutScreen({ onBack, employeeId, serverAddress }) {
+    const [currentLang, setCurrentLang] = useState(getGlobalLang());
     const [viewState, setViewState] = useState('loading');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [distanceAway, setDistanceAway] = useState(0);
@@ -35,6 +37,16 @@ export default function CheckOutScreen({ onBack, employeeId, serverAddress }) {
 
     const appStateRef = useRef(AppState.currentState);
     const radarPulse = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        const unsubscribe = subscribeLang((newLang) => {
+            setCurrentLang(newLang);
+        });
+        return () => unsubscribe();
+    }, []);
+
+    const t = translations[currentLang];
+    const isRtl = currentLang === 'ur' || currentLang === 'ar';
 
     useEffect(() => {
         const pulseAnimation = Animated.loop(
@@ -137,18 +149,18 @@ export default function CheckOutScreen({ onBack, employeeId, serverAddress }) {
     const currentButtonTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
 
     return (
-        <View style={styles.mainWrapper}>
-            <View style={styles.navTopHeaderBar}>
+        <View style={[styles.mainWrapper, { direction: isRtl ? 'rtl' : 'ltr' }]}>
+            <View style={[styles.navTopHeaderBar, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                 <TouchableOpacity onPress={onBack} style={styles.headerBackArrowLink}>
-                    <Ionicons name="chevron-back" size={20} color="#344054" />
+                    <Ionicons name={isRtl ? "chevron-forward" : "chevron-back"} size={20} color="#344054" />
                 </TouchableOpacity>
-                <Text style={styles.navBarHeadingCenterTitle}>Check-out</Text>
+                <Text style={styles.navBarHeadingCenterTitle}>{t.checkOutScreenTitle}</Text>
                 <View style={styles.headerRightBoxSpace} />
             </View>
 
             {(viewState === 'within_range' || viewState === 'success') && (
-                <View style={styles.topGreenStatusAlertInlineStrip}>
-                    <Text style={styles.topGreenStatusAlertInlineStripText}>You are inside the site boundary</Text>
+                <View style={[styles.topGreenStatusAlertInlineStrip, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                    <Text style={styles.topGreenStatusAlertInlineStripText}>{t.insideBoundaryText}</Text>
                     <Ionicons name="checkmark-circle" size={16} color="#0B6655" />
                 </View>
             )}
@@ -205,109 +217,109 @@ export default function CheckOutScreen({ onBack, employeeId, serverAddress }) {
                 </View>
 
                 <View style={styles.statusDescriptionTextArea}>
-                    {viewState === 'loading' && <Text style={styles.mainStatusAlertTitleText}>Loading location...</Text>}
+                    {viewState === 'loading' && <Text style={styles.mainStatusAlertTitleText}>{t.loadingLocation}</Text>}
                     {viewState === 'no_permission' && (
                         <>
-                            <Text style={styles.mainStatusAlertTitleText}>Location permission needed</Text>
-                            <Text style={styles.subStatusInstructionBodyText}>Allow location permissions to check out at site.</Text>
+                            <Text style={styles.mainStatusAlertTitleText}>{t.locationPermissionNeeded}</Text>
+                            <Text style={[styles.subStatusInstructionBodyText, { textAlign: isRtl ? 'right' : 'center' }]}>{t.allowLocationPerms}</Text>
                         </>
                     )}
                     {viewState === 'gps_off' && (
                         <>
-                            <Text style={styles.mainStatusAlertTitleText}>Location services are off</Text>
-                            <Text style={styles.subStatusInstructionBodyText}>Turn on location (GPS) in your phone settings, then try again.</Text>
+                            <Text style={styles.mainStatusAlertTitleText}>{t.locationServicesOff}</Text>
+                            <Text style={[styles.subStatusInstructionBodyText, { textAlign: isRtl ? 'right' : 'center' }]}>{t.turnOnGps}</Text>
                         </>
                     )}
                     {viewState === 'low_accuracy' && (
                         <>
-                            <Text style={[styles.mainStatusAlertTitleText, { color: '#B24E00' }]}>Outside site boundary</Text>
-                            <Text style={styles.subStatusInstructionBodyText}>You are {Math.round(distanceAway)}m away. Move within {ALLOWED_RADIUS}m and try again.</Text>
+                            <Text style={[styles.mainStatusAlertTitleText, { color: '#B24E00' }]}>{t.outsideRange}</Text>
+                            <Text style={[styles.subStatusInstructionBodyText, { textAlign: isRtl ? 'right' : 'center' }]}>{t.distanceAwayText(Math.round(distanceAway))}</Text>
                         </>
                     )}
                     {viewState === 'network_error' && (
                         <>
-                            <Text style={[styles.mainStatusAlertTitleText, { color: '#D92D20' }]}>Not recorded</Text>
-                            <Text style={styles.subStatusInstructionBodyText}>Check your connection and try again.</Text>
+                            <Text style={[styles.mainStatusAlertTitleText, { color: '#D92D20' }]}>{t.connectionError}</Text>
+                            <Text style={[styles.subStatusInstructionBodyText, { textAlign: isRtl ? 'right' : 'center' }]}>{t.checkInternet}</Text>
                         </>
                     )}
                     {viewState === 'within_range' && (
                         <>
-                            <Text style={[styles.mainStatusAlertTitleText, { color: '#0B6655' }]}>Within range</Text>
-                            <Text style={styles.subStatusInstructionBodyText}>You can check out now</Text>
+                            <Text style={[styles.mainStatusAlertTitleText, { color: '#0B6655' }]}>{t.withinRange}</Text>
+                            <Text style={[styles.subStatusInstructionBodyText, { textAlign: isRtl ? 'right' : 'center' }]}>{t.youCanCheckIn}</Text>
                         </>
                     )}
                     {viewState === 'success' && (
                         <>
-                            <Text style={[styles.mainStatusAlertTitleText, { color: '#0B6655' }]}>Checked out</Text>
+                            <Text style={[styles.mainStatusAlertTitleText, { color: '#0B6655' }]}>{t.checkedIn}</Text>
                             <Text style={styles.clockBigTickingText}>{punchTime}</Text>
-                            <Text style={styles.serverInfoMetaTagsSubtext}>Check-out recorded · Source: Mobile App</Text>
+                            <Text style={styles.serverInfoMetaTagsSubtext}>{t.serverTimeSource}</Text>
                         </>
                     )}
                 </View>
 
-                <View style={styles.workSiteWhiteInformationCardBox}>
-                    <View style={styles.workSiteCardLeftBlockRow}>
-                        <View style={styles.fileIconBadgeContainerSpace}>
+                <View style={[styles.workSiteWhiteInformationCardBox, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                    <View style={[styles.workSiteCardLeftBlockRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                        <View style={[styles.fileIconBadgeContainerSpace, { [isRtl ? 'marginLeft' : 'marginRight']: 12, [isRtl ? 'marginRight' : 'marginLeft']: 0 }]}>
                             <Ionicons name="document-text-outline" size={20} color="#0B6655" />
                         </View>
-                        <View style={styles.workSiteDetailsTextContent}>
-                            <Text style={styles.workSiteLabelHeader}>Work site</Text>
-                            <Text style={styles.workSiteRealNameTitle}>{TARGET_SITE.name}</Text>
-                            <Text style={styles.workSiteAddressStringLabel}>{TARGET_SITE.address}</Text>
-                            <Text style={styles.gpsAccuracyRealTimeMetricsMetaText}>{Math.round(distanceAway)}m away · ±{Math.round(gpsAccuracy)}m accuracy</Text>
+                        <View style={[styles.workSiteDetailsTextContent, { alignItems: isRtl ? 'flex-end' : 'flex-start' }]}>
+                            <Text style={styles.workSiteLabelHeader}>{t.workSite}</Text>
+                            <Text style={[styles.workSiteRealNameTitle, { textAlign: isRtl ? 'right' : 'left' }]}>{TARGET_SITE.name}</Text>
+                            <Text style={[styles.workSiteAddressStringLabel, { textAlign: isRtl ? 'right' : 'left' }]}>{TARGET_SITE.address}</Text>
+                            <Text style={[styles.gpsAccuracyRealTimeMetricsMetaText, { textAlign: isRtl ? 'right' : 'left' }]}>{t.distanceAwayMeta(Math.round(distanceAway), Math.round(gpsAccuracy))}</Text>
                         </View>
                     </View>
-                    <Ionicons name="navigate-outline" size={18} color="#0B6655" style={styles.navigationArrowCompassIcon} />
+                    <Ionicons name="navigate-outline" size={18} color="#0B6655" style={[styles.navigationArrowCompassIcon, { [isRtl ? 'marginRight' : 'marginLeft']: 0, [isRtl ? 'marginLeft' : 'marginRight']: 2 }]} />
                 </View>
 
                 <View style={styles.actionFixedFooterButtonsContainer}>
                     {viewState === 'within_range' && (
                         <TouchableOpacity style={styles.primaryActionButtonNode} onPress={triggerCheckOutSubmit} disabled={isSubmitting}>
                             {isSubmitting ? (
-                                <View style={styles.buttonLoaderRow}>
-                                    <ActivityIndicator size="small" color="#FFFFFF" style={{ marginRight: 8 }} />
-                                    <Text style={styles.primaryActionButtonTextLabel}>Checking out...</Text>
+                                <View style={[styles.buttonLoaderRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                                    <ActivityIndicator size="small" color="#FFFFFF" style={{ [isRtl ? 'marginLeft' : 'marginRight']: 8 }} />
+                                    <Text style={styles.primaryActionButtonTextLabel}>{t.checkingOutBtn}</Text>
                                 </View>
                             ) : (
                                 <>
-                                    <Text style={styles.primaryActionButtonTextLabel}>Check-out</Text>
-                                    <Text style={styles.buttonInlineTimeTrackerText}>{currentButtonTime}</Text>
+                                    <Text style={styles.primaryActionButtonTextLabel}>{t.checkOutBtn}</Text>
+                                    <Text style={[styles.buttonInlineTimeTrackerText, { [isRtl ? 'marginRight' : 'marginLeft']: 8 }]}>{currentButtonTime}</Text>
                                 </>
                             )}
                         </TouchableOpacity>
                     )}
                     {(viewState === 'no_permission' || viewState === 'gps_off') && (
                         <TouchableOpacity style={styles.primaryActionButtonNode} onPress={() => Linking.openSettings()}>
-                            <Text style={styles.primaryActionButtonTextLabel}>Open Settings</Text>
+                            <Text style={styles.primaryActionButtonTextLabel}>{t.openSettingsBtn}</Text>
                         </TouchableOpacity>
                     )}
                     {viewState === 'low_accuracy' && (
                         <>
                             <TouchableOpacity style={[styles.primaryActionButtonNode, { backgroundColor: '#BCD6D1' }]} disabled>
-                                <Text style={styles.primaryActionButtonTextLabel}>Check-out</Text>
-                                <Text style={styles.buttonInlineTimeTrackerText}>{currentButtonTime}</Text>
+                                <Text style={styles.primaryActionButtonTextLabel}>{t.checkOutBtn}</Text>
+                                <Text style={[styles.buttonInlineTimeTrackerText, { [isRtl ? 'marginRight' : 'marginLeft']: 8 }]}>{currentButtonTime}</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity style={styles.secondaryButtonOutlineRow} onPress={initLocationCheck}>
-                                <Ionicons name="navigate-outline" size={16} color="#344054" style={{ marginRight: 6 }} />
-                                <Text style={styles.secondaryButtonOutlineRowText}>Check location again</Text>
+                            <TouchableOpacity style={[styles.secondaryButtonOutlineRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]} onPress={initLocationCheck}>
+                                <Ionicons name="navigate-outline" size={16} color="#344054" style={{ [isRtl ? 'marginLeft' : 'marginRight']: 6 }} />
+                                <Text style={styles.secondaryButtonOutlineRowText}>{t.checkLocationAgain}</Text>
                             </TouchableOpacity>
                         </>
                     )}
                     {viewState === 'network_error' && (
                         <TouchableOpacity style={styles.primaryActionButtonNode} onPress={initLocationCheck}>
-                            <Text style={styles.primaryActionButtonTextLabel}>Try again</Text>
+                            <Text style={styles.primaryActionButtonTextLabel}>{t.tryAgainBtn}</Text>
                         </TouchableOpacity>
                     )}
                     {viewState === 'success' && (
                         <TouchableOpacity style={styles.primaryActionButtonNode} onPress={onBack}>
-                            <Text style={styles.primaryActionButtonTextLabel}>Done</Text>
+                            <Text style={styles.primaryActionButtonTextLabel}>{t.doneBtn}</Text>
                         </TouchableOpacity>
                     )}
-                    <View style={styles.hourlyPresenceStickyBannerBox}>
-                        <Ionicons name="time-outline" size={16} color="#0B6655" style={{ marginRight: 6 }} />
-                        <Text style={styles.hourlyPresenceBannerLabelText}>Hourly presence is on — it stops when you check out.</Text>
+                    <View style={[styles.hourlyPresenceStickyBannerBox, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                        <Ionicons name="time-outline" size={16} color="#0B6655" style={{ [isRtl ? 'marginLeft' : 'marginRight']: 6 }} />
+                        <Text style={[styles.hourlyPresenceBannerLabelText, { textAlign: isRtl ? 'right' : 'left' }]}>{t.hourlyPresenceCheckoutNotice}</Text>
                     </View>
-                    <Text style={styles.bottomLegalInstructionDisclaimerNote}>The server checks your location and records the time. The on-screen "within range" is guidance only.</Text>
+                    <Text style={[styles.bottomLegalInstructionDisclaimerNote, { textAlign: isRtl ? 'right' : 'center' }]}>{t.legalDisclaimer}</Text>
                 </View>
             </ScrollView>
         </View>
@@ -336,18 +348,18 @@ const styles = StyleSheet.create({
     serverInfoMetaTagsSubtext: { fontSize: 12, color: '#667085', marginTop: 6, textAlign: 'center', fontWeight: '500' },
     workSiteWhiteInformationCardBox: { flexDirection: 'row', backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, width: '100%', borderWidth: 1, borderColor: '#EEF0F2', marginTop: 16, justifyContent: 'space-between', alignItems: 'flex-start' },
     workSiteCardLeftBlockRow: { flexDirection: 'row', flex: 1 },
-    fileIconBadgeContainerSpace: { width: 36, height: 36, borderRadius: 8, backgroundColor: '#F0F9F8', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+    fileIconBadgeContainerSpace: { width: 36, height: 36, borderRadius: 8, backgroundColor: '#F0F9F8', justifyContent: 'center', alignItems: 'center' },
     workSiteDetailsTextContent: { flex: 1 },
     workSiteLabelHeader: { fontSize: 11, color: '#667085', fontWeight: '500' },
     workSiteRealNameTitle: { fontSize: 14, fontWeight: '700', color: '#101828', marginTop: 2 },
     workSiteAddressStringLabel: { fontSize: 12, color: '#475467', marginTop: 2 },
     gpsAccuracyRealTimeMetricsMetaText: { fontSize: 12, color: '#98A2B3', marginTop: 6, fontWeight: '500' },
-    navigationArrowCompassIcon: { marginTop: 2, marginRight: 2 },
+    navigationArrowCompassIcon: { marginTop: 2 },
     actionFixedFooterButtonsContainer: { width: '100%', position: 'absolute', bottom: 24, paddingHorizontal: 0 },
     primaryActionButtonNode: { backgroundColor: '#0B6655', height: 48, borderRadius: 12, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', width: '100%' },
     buttonLoaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
     primaryActionButtonTextLabel: { color: '#FFFFFF', fontSize: 15, fontWeight: '600' },
-    buttonInlineTimeTrackerText: { color: '#A3C7C1', fontSize: 13, fontWeight: '500', marginLeft: 8 },
+    buttonInlineTimeTrackerText: { color: '#A3C7C1', fontSize: 13, fontWeight: '500' },
     secondaryButtonOutlineRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 10, paddingVertical: 8 },
     secondaryButtonOutlineRowText: { color: '#344054', fontSize: 13, fontWeight: '600' },
     hourlyPresenceStickyBannerBox: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 14, backgroundColor: '#F0F9F8', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8 },

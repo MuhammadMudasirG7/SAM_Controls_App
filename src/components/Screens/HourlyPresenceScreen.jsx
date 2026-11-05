@@ -12,6 +12,7 @@ import {
   Modal
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { translations, getGlobalLang, subscribeLang } from '../../../i18n';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -22,6 +23,7 @@ export default function HourlyPresenceScreen({
   isSiteSupported = true,
   isUserCheckedIn = false
 }) {
+  const [currentLang, setCurrentLang] = useState(getGlobalLang());
   const [isEnabled, setIsEnabled] = useState(false);
   const [userCheckedIn, setUserCheckedIn] = useState(isUserCheckedIn);
   const [loading, setLoading] = useState(true);
@@ -34,6 +36,16 @@ export default function HourlyPresenceScreen({
 
   const slideAnim = useRef(new Animated.Value(isUserCheckedIn && isEnabled ? 1 : 0)).current;
   const spinValue = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const unsubscribe = subscribeLang((newLang) => {
+      setCurrentLang(newLang);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const t = translations[currentLang];
+  const isRtl = currentLang === 'ur' || currentLang === 'ar';
 
   useEffect(() => {
     let spinAnimation;
@@ -153,24 +165,24 @@ export default function HourlyPresenceScreen({
 
   if (!isSiteSupported) {
     return (
-      <View style={styles.mainWrapper}>
-        <View style={styles.navTopHeaderBar}>
+      <View style={[styles.mainWrapper, { direction: isRtl ? 'rtl' : 'ltr' }]}>
+        <View style={[styles.navTopHeaderBar, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
           <TouchableOpacity onPress={onBack} style={styles.headerBackArrowLink}>
-            <Ionicons name="chevron-back" size={22} color="#1D2939" />
+            <Ionicons name={isRtl ? "chevron-forward" : "chevron-back"} size={22} color="#1D2939" />
           </TouchableOpacity>
-          <Text style={styles.navBarHeadingCenterTitle}>Hourly Presence</Text>
+          <Text style={styles.navBarHeadingCenterTitle}>{t.hourlyPresenceTitle}</Text>
           <View style={styles.headerRightBoxSpace} />
         </View>
         <View style={styles.disabledScreenCenterContainer}>
           <View style={styles.disabledIconOuterCircle}>
             <Ionicons name="ban-outline" size={32} color="#F04438" />
           </View>
-          <Text style={styles.disabledMainHeadingText}>Not available at your site</Text>
-          <Text style={styles.disabledSubParagraphText}>
-            Your administrator has turned off hourly presence for this site. Check-in and check-out work as normal.
+          <Text style={[styles.disabledMainHeadingText, { textAlign: isRtl ? 'right' : 'center' }]}>{t.notAvailableSiteTitle}</Text>
+          <Text style={[styles.disabledSubParagraphText, { textAlign: isRtl ? 'right' : 'center' }]}>
+            {t.notAvailableSiteDesc}
           </Text>
           <TouchableOpacity style={styles.fallbackHomeActionButtonNode} onPress={onBack}>
-            <Text style={styles.fallbackHomeActionButtonText}>Go Back</Text>
+            <Text style={styles.fallbackHomeActionButtonText}>{t.goBackBtn}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -178,12 +190,12 @@ export default function HourlyPresenceScreen({
   }
 
   return (
-    <View style={styles.mainWrapper}>
-      <View style={styles.navTopHeaderBar}>
+    <View style={[styles.mainWrapper, { direction: isRtl ? 'rtl' : 'ltr' }]}>
+      <View style={[styles.navTopHeaderBar, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
         <TouchableOpacity onPress={onBack} style={styles.headerBackArrowLink}>
-          <Ionicons name="chevron-back" size={22} color="#1D2939" />
+          <Ionicons name={isRtl ? "chevron-forward" : "chevron-back"} size={22} color="#1D2939" />
         </TouchableOpacity>
-        <Text style={styles.navBarHeadingCenterTitle}>Hourly Presence</Text>
+        <Text style={styles.navBarHeadingCenterTitle}>{t.hourlyPresenceTitle}</Text>
         <View style={styles.headerRightBoxSpace} />
       </View>
 
@@ -199,33 +211,31 @@ export default function HourlyPresenceScreen({
               <Animated.View style={isEnabled && userCheckedIn ? { transform: [{ rotate: spin }] } : {}}>
                 <Ionicons name="time-outline" size={40} color={isEnabled && userCheckedIn ? "#0B6655" : "#667085"} />
               </Animated.View>
-              <View style={[styles.miniArrowIndicatorBadge, (!isEnabled || !userCheckedIn) && { backgroundColor: '#667085' }]}>
+              <View style={[styles.miniArrowIndicatorBadge, isRtl ? { left: 2, right: 'auto' } : { right: 2, left: 'auto' }, (!isEnabled || !userCheckedIn) && { backgroundColor: '#667085' }]}>
                 <Ionicons name="flash" size={10} color="#FFFFFF" />
               </View>
             </View>
-            <Text style={styles.mainStatusStateHeadingTitleText}>
-              {!userCheckedIn ? "Hourly Presence Paused" : (isEnabled ? "Hourly Presence Active" : "Hourly Presence Inactive")}
+            <Text style={[styles.mainStatusStateHeadingTitleText, { textAlign: isRtl ? 'right' : 'center' }]}>
+              {!userCheckedIn ? t.hourlyPaused : (isEnabled ? t.hourlyActive : t.hourlyInactive)}
             </Text>
-            <Text style={styles.subStatusInstructionParagraphBodyText}>
-              {!userCheckedIn
-                ? "You are not checked in. Hourly presence starts automatically after your shifts check-in."
-                : "While you're checked in, the app confirms every hour that you're still on site."}
+            <Text style={[styles.subStatusInstructionParagraphBodyText, { textAlign: isRtl ? 'right' : 'center' }]}>
+              {!userCheckedIn ? t.notCheckedInNotice : t.checkedInNotice}
             </Text>
           </View>
 
-          <View style={[styles.toggleSelectionMainCardBox, !userCheckedIn && styles.toggleSelectionMainCardBoxDisabled]}>
-            <View style={styles.toggleCardLeftBlockRow}>
-              <View style={styles.innerToggleIconBadgeContainer}>
+          <View style={[styles.toggleSelectionMainCardBox, { flexDirection: isRtl ? 'row-reverse' : 'row' }, !userCheckedIn && styles.toggleSelectionMainCardBoxDisabled]}>
+            <View style={[styles.toggleCardLeftBlockRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+              <View style={[styles.innerToggleIconBadgeContainer, isRtl ? { marginLeft: 12, marginRight: 0 } : { marginRight: 12, marginLeft: 0 }]}>
                 <Ionicons name="locate-outline" size={20} color="#0B6655" />
               </View>
-              <View style={styles.toggleLabelsContentContainer}>
-                <Text style={styles.toggleMainLabelTitleText}>Hourly Presence</Text>
-                <Text style={styles.toggleSubLabelDescriptionText}>Every 60 min · automatic tracking</Text>
+              <View style={[styles.toggleLabelsContentContainer, { alignItems: isRtl ? 'flex-end' : 'flex-start' }]}>
+                <Text style={[styles.toggleMainLabelTitleText, { textAlign: isRtl ? 'right' : 'left' }]}>{t.hourlyPresenceTitle}</Text>
+                <Text style={[styles.toggleSubLabelDescriptionText, { textAlign: isRtl ? 'right' : 'left' }]}>{t.everyHourTracking}</Text>
               </View>
             </View>
 
             {isUpdating ? (
-              <ActivityIndicator size="small" color="#0B6655" style={{ marginRight: 8 }} />
+              <ActivityIndicator size="small" color="#0B6655" style={{ [isRtl ? 'marginLeft' : 'marginRight']: 8 }} />
             ) : (
               <TouchableOpacity activeOpacity={0.8} onPress={handleTogglePress} disabled={!userCheckedIn}>
                 <View style={[styles.customSwitchTrackFrame, isEnabled && styles.customSwitchTrackFrameOn]}>
@@ -237,19 +247,19 @@ export default function HourlyPresenceScreen({
 
           {isEnabled && userCheckedIn && confirmationLogs.length > 0 && (
             <View style={styles.historyLogSectionWrapper}>
-              <Text style={styles.historySectionLabelHeader}>TODAY — {confirmationLogs.length} CONFIRMATIONS</Text>
+              <Text style={[styles.historySectionLabelHeader, { textAlign: isRtl ? 'right' : 'left' }]}>{t.todayConfirmations(confirmationLogs.length)}</Text>
               <View style={styles.historyListOuterWhiteCardFrame}>
                 {confirmationLogs.map((item, index) => (
-                  <View key={item._id || index} style={[styles.logRowContainerItem, index === confirmationLogs.length - 1 && { borderBottomWidth: 0 }]}>
-                    <Text style={styles.logTimestampText}>{item.time || '00:00'}</Text>
-                    <View style={styles.logDetailsCenterContentBlock}>
-                      <Text style={styles.logMainTitleText}>{item.title || "Inside site"}</Text>
-                      <Text style={styles.logSubTitleText}>
-                        ±{item.distance || 9} m · sent on time
+                  <View key={item._id || index} style={[styles.logRowContainerItem, { flexDirection: isRtl ? 'row-reverse' : 'row' }, index === confirmationLogs.length - 1 && { borderBottomWidth: 0 }]}>
+                    <Text style={[styles.logTimestampText, { textAlign: isRtl ? 'right' : 'left' }]}>{item.time || '00:00'}</Text>
+                    <View style={[styles.logDetailsCenterContentBlock, { alignItems: isRtl ? 'flex-end' : 'flex-start' }]}>
+                      <Text style={[styles.logMainTitleText, { textAlign: isRtl ? 'right' : 'left' }]}>{item.title || t.insideSiteTitle}</Text>
+                      <Text style={[styles.logSubTitleText, { textAlign: isRtl ? 'right' : 'left' }]}>
+                        {t.distanceBadge(item.distance || 9)}
                       </Text>
                     </View>
                     <View style={styles.statusBadgeCapsuleContainer}>
-                      <Text style={styles.statusBadgeCapsuleText}>{item.badge || "Inside"}</Text>
+                      <Text style={styles.statusBadgeCapsuleText}>{item.badge || t.badgeInside}</Text>
                     </View>
                   </View>
                 ))}
@@ -257,10 +267,10 @@ export default function HourlyPresenceScreen({
             </View>
           )}
 
-          <View style={styles.infoBannerStickyNoticeBox}>
-            <Ionicons name="information-circle" size={18} color="#065F46" style={{ marginRight: 8 }} />
-            <Text style={styles.infoBannerTextContentColorGreen}>
-              Confirmations are kept separately. Only your primary check-in and check-out structures count as active attendance.
+          <View style={[styles.infoBannerStickyNoticeBox, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+            <Ionicons name="information-circle" size={18} color="#065F46" style={{ [isRtl ? 'marginLeft' : 'marginRight']: 8, [isRtl ? 'marginRight' : 'marginLeft']: 0 }} />
+            <Text style={[styles.infoBannerTextContentColorGreen, { textAlign: isRtl ? 'right' : 'left' }]}>
+              {t.attendanceSeparateNotice}
             </Text>
           </View>
 
@@ -274,12 +284,12 @@ export default function HourlyPresenceScreen({
             <View style={styles.modalIconHeaderWrapper}>
               <Ionicons name="alert-circle" size={28} color="#D92D20" />
             </View>
-            <Text style={styles.bottomSheetMainHeadingTitleText}>Turn off hourly presence?</Text>
+            <Text style={styles.bottomSheetMainHeadingTitleText}>{t.turnOffModalTitle}</Text>
             <Text style={styles.bottomSheetParagraphSubDescriptionText}>
-              Background location tracking will halt within 1 minute. You can still safely process your checkout normally.
+              {t.turnOffModalDesc}
             </Text>
 
-            <View style={styles.modalActionButtonsGroupRow}>
+            <View style={[styles.modalActionButtonsGroupRow, { flexDirection: isRtl ? 'row' : 'row-reverse' }]}>
               <TouchableOpacity
                 style={[styles.modalActionButtonBase, styles.modalActionButtonDestructive]}
                 onPress={() => executeToggle(false)}
@@ -288,7 +298,7 @@ export default function HourlyPresenceScreen({
                 {isUpdating ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <Text style={styles.modalActionButtonTextWhite}>Turn off</Text>
+                  <Text style={styles.modalActionButtonTextWhite}>{t.turnOffBtn}</Text>
                 )}
               </TouchableOpacity>
 
@@ -297,7 +307,7 @@ export default function HourlyPresenceScreen({
                 onPress={() => setShowTurnOffModal(false)}
                 disabled={isUpdating}
               >
-                <Text style={styles.modalActionButtonTextDark}>Cancel</Text>
+                <Text style={styles.modalActionButtonTextDark}>{t.cancelBtn}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -311,12 +321,12 @@ export default function HourlyPresenceScreen({
             <View style={[styles.modalIconHeaderWrapper, { backgroundColor: '#ECFDF3' }]}>
               <Ionicons name="checkmark-circle" size={28} color="#039855" />
             </View>
-            <Text style={styles.bottomSheetMainHeadingTitleText}>Turn on hourly presence?</Text>
+            <Text style={styles.bottomSheetMainHeadingTitleText}>{t.turnOnModalTitle}</Text>
             <Text style={styles.bottomSheetParagraphSubDescriptionText}>
-              This enables hourly background checking to ensure real-time location sync and continuous logging stability.
+              {t.turnOnModalDesc}
             </Text>
 
-            <View style={styles.modalActionButtonsGroupRow}>
+            <View style={[styles.modalActionButtonsGroupRow, { flexDirection: isRtl ? 'row' : 'row-reverse' }]}>
               <TouchableOpacity
                 style={[styles.modalActionButtonBase, styles.modalActionButtonPrimary]}
                 onPress={() => executeToggle(true)}
@@ -325,7 +335,7 @@ export default function HourlyPresenceScreen({
                 {isUpdating ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <Text style={styles.modalActionButtonTextWhite}>Turn on</Text>
+                  <Text style={styles.modalActionButtonTextWhite}>{t.turnOnBtn}</Text>
                 )}
               </TouchableOpacity>
 
@@ -334,7 +344,7 @@ export default function HourlyPresenceScreen({
                 onPress={() => setShowTurnOnModal(false)}
                 disabled={isUpdating}
               >
-                <Text style={styles.modalActionButtonTextDark}>Cancel</Text>
+                <Text style={styles.modalActionButtonTextDark}>{t.cancelBtn}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -396,6 +406,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
+    position: 'relative',
   },
   illustrationIconCircleBadgeOff: {
     backgroundColor: '#F2F4F7',
@@ -403,7 +414,6 @@ const styles = StyleSheet.create({
   miniArrowIndicatorBadge: {
     position: 'absolute',
     bottom: 2,
-    right: 2,
     backgroundColor: '#0B6655',
     width: 20,
     height: 20,
@@ -417,13 +427,11 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     color: '#1D2939',
-    textAlign: 'center',
     marginBottom: 8,
   },
   subStatusInstructionParagraphBodyText: {
     fontSize: 14,
     color: '#475467',
-    textAlign: 'center',
     lineHeight: 20,
     paddingHorizontal: 16,
   },
@@ -459,7 +467,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#E6F4F1',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
   },
   toggleLabelsContentContainer: {
     flex: 1,
@@ -588,12 +595,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1D2939',
     marginBottom: 8,
-    textAlign: 'center',
   },
   disabledSubParagraphText: {
     fontSize: 14,
     color: '#667085',
-    textAlign: 'center',
     lineHeight: 20,
     marginBottom: 24,
   },
@@ -653,7 +658,6 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   modalActionButtonsGroupRow: {
-    flexDirection: 'row-reverse',
     width: '100%',
     justifyContent: 'space-between',
   },

@@ -8,14 +8,26 @@ import {
   ScrollView 
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { translations, getGlobalLang, subscribeLang } from '../../../i18n';
 
 export default function OtpVerificationScreen({ onBackToForgot, onVerificationSuccess, employeeId, serverAddress }) {
+  const [currentLang, setCurrentLang] = useState(getGlobalLang());
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [timer, setTimer] = useState(60);
   const [otpState, setOtpState] = useState('default'); 
   const [attemptsLeft, setAttemptsLeft] = useState(3);
   const [showToast, setShowToast] = useState(true);
   const inputsRef = useRef([]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeLang((newLang) => {
+      setCurrentLang(newLang);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const t = translations[currentLang];
+  const isRtl = currentLang === 'ur' || currentLang === 'ar';
 
   useEffect(() => {
     const toastTimer = setTimeout(() => {
@@ -62,7 +74,7 @@ export default function OtpVerificationScreen({ onBackToForgot, onVerificationSu
 
     const fullCode = otp.join('');
     if (fullCode.length < 6) {
-      alert("Please enter the complete 6-digit code.");
+      alert(t.enterCompleteOtpAlert);
       return;
     }
 
@@ -114,15 +126,15 @@ export default function OtpVerificationScreen({ onBackToForgot, onVerificationSu
   };
 
   return (
-    <View style={styles.mainWrapper}>
+    <View style={[styles.mainWrapper, { direction: isRtl ? 'rtl' : 'ltr' }]}>
       
       {showToast && (
-        <View style={styles.toastNotification}>
-          <Ionicons name="information-circle-outline" size={18} color="#0B6655" style={styles.toastIcon} />
-          <View style={styles.toastContent}>
-            <Text style={styles.toastTitle}>Check your email</Text>
-            <Text style={styles.toastSubtitle}>
-              If this Employee ID has an email on file, we've sent a 6-digit code.
+        <View style={[styles.toastNotification, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+          <Ionicons name="information-circle-outline" size={18} color="#0B6655" style={[isRtl ? { marginLeft: 12, marginRight: 0 } : { marginRight: 12, marginLeft: 0 }, { marginTop: 2 }]} />
+          <View style={[styles.toastContent, { alignItems: isRtl ? 'flex-end' : 'flex-start' }]}>
+            <Text style={[styles.toastTitle, { textAlign: isRtl ? 'right' : 'left' }]}>{t.toastTitle}</Text>
+            <Text style={[styles.toastSubtitle, { textAlign: isRtl ? 'right' : 'left' }]}>
+              {t.toastSubtitle}
             </Text>
           </View>
         </View>
@@ -130,29 +142,30 @@ export default function OtpVerificationScreen({ onBackToForgot, onVerificationSu
 
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         
-        <View style={styles.navBar}>
+        <View style={[styles.navBar, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
           <TouchableOpacity onPress={onBackToForgot} style={styles.backArrowButton}>
-            <Ionicons name="chevron-back" size={20} color="#1D2939" />
+            <Ionicons name={isRtl ? "chevron-forward" : "chevron-back"} size={20} color="#1D2939" />
           </TouchableOpacity>
-          <Text style={styles.navTitle}>Reset password</Text>
+          <Text style={styles.navTitle}>{t.resetPassTitle}</Text>
           <View style={styles.navRightPlaceholder} />
         </View>
 
-        <View style={styles.contentSection}>
-          <Text style={styles.mainTitle}>Enter the 6-digit code</Text>
-          <Text style={styles.descriptionText}>
-            Sent to f•••••@najd-infra.sa - valid for 10 minutes
+        <View style={[styles.contentSection, { alignItems: isRtl ? 'flex-end' : 'flex-start' }]}>
+          <Text style={[styles.mainTitle, { textAlign: isRtl ? 'right' : 'left' }]}>{t.enterOtpMainTitle}</Text>
+          <Text style={[styles.descriptionText, { textAlign: isRtl ? 'right' : 'left' }]}>
+            {t.otpSentDesc}
           </Text>
         </View>
 
         <View style={styles.formContainer}>
-          <View style={styles.otpRow}>
+          <View style={[styles.otpRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
             {otp.map((digit, index) => (
               <TextInput
                 key={index}
                 ref={(ref) => (inputsRef.current[index] = ref)}
                 style={[
                   styles.otpInput, 
+                  { textAlign: 'center' },
                   otpState === 'incorrect' && styles.otpInputError
                 ]}
                 keyboardType="number-pad"
@@ -166,16 +179,16 @@ export default function OtpVerificationScreen({ onBackToForgot, onVerificationSu
           </View>
 
           {otpState === 'incorrect' && (
-            <View style={styles.errorTextContainer}>
-              <Ionicons name="warning-outline" size={14} color="#D92D20" style={styles.inlineIconSpace} />
-              <Text style={styles.incorrectText}>Code is incorrect. {attemptsLeft} attempts left.</Text>
+            <View style={[styles.errorTextContainer, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+              <Ionicons name="warning-outline" size={14} color="#D92D20" style={[isRtl ? { marginLeft: 6, marginRight: 0 } : { marginRight: 6, marginLeft: 0 }]} />
+              <Text style={[styles.incorrectText, { textAlign: isRtl ? 'right' : 'left' }]}>{t.incorrectOtpMsg(attemptsLeft)}</Text>
             </View>
           )}
 
           {otpState === 'expired' && (
-            <View style={styles.expiredBanner}>
-              <Ionicons name="time-outline" size={16} color="#B42318" style={styles.inlineIconSpace} />
-              <Text style={styles.expiredText}>This code has expired. Request a new one.</Text>
+            <View style={[styles.expiredBanner, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+              <Ionicons name="time-outline" size={16} color="#B42318" style={[isRtl ? { marginLeft: 6, marginRight: 0 } : { marginRight: 6, marginLeft: 0 }]} />
+              <Text style={[styles.expiredText, { textAlign: isRtl ? 'right' : 'left' }]}>{t.expiredOtpMsg}</Text>
             </View>
           )}
 
@@ -187,20 +200,20 @@ export default function OtpVerificationScreen({ onBackToForgot, onVerificationSu
             onPress={handleVerify}
             disabled={otpState === 'expired'}
           >
-            <Text style={styles.verifyButtonText}>Verify code</Text>
+            <Text style={styles.verifyButtonText}>{t.verifyCodeBtn}</Text>
           </TouchableOpacity>
 
           <View style={styles.timerContainer}>
             {otpState === 'expired' || timer === 0 ? (
               <TouchableOpacity onPress={handleResend}>
-                <Text style={styles.resendLinkText}>Resend code</Text>
+                <Text style={styles.resendLinkText}>{t.resendCodeBtn}</Text>
               </TouchableOpacity>
             ) : (
-              <View style={styles.countdownRow}>
+              <View style={[styles.countdownRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                 <TouchableOpacity onPress={handleResend}>
-                  <Text style={styles.resendLinkText}>Resend code</Text>
+                  <Text style={styles.resendLinkText}>{t.resendCodeBtn}</Text>
                 </TouchableOpacity>
-                <Text style={styles.countdownText}> in {formatTimer(timer)}</Text>
+                <Text style={styles.countdownText}>{isRtl ? ` في ${formatTimer(timer)} ` : `in ${formatTimer(timer)}`}</Text>
               </View>
             )}
           </View>
@@ -237,10 +250,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 12,
     elevation: 4,
-  },
-  toastIcon: {
-    marginRight: 12,
-    marginTop: 2,
   },
   toastContent: {
     flex: 1,
@@ -279,7 +288,6 @@ const styles = StyleSheet.create({
     width: 40,
   },
   contentSection: {
-    alignItems: 'flex-start',
     paddingHorizontal: 24,
     marginTop: 24,
     marginBottom: 20,
@@ -309,7 +317,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#D0D5DD',
     borderRadius: 10,
-    textAlign: 'center',
     fontSize: 20,
     fontWeight: '600',
     color: '#101828',
@@ -323,9 +330,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 24,
-  },
-  inlineIconSpace: {
-    marginRight: 6,
   },
   incorrectText: {
     color: '#D92D20',

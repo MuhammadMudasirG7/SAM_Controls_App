@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   StyleSheet, 
   Text, 
@@ -11,6 +11,7 @@ import {
   Alert 
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { translations, getGlobalLang, subscribeLang } from '../../../i18n';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -19,11 +20,22 @@ export default function ChangePasswordScreen({
   serverAddress = 'http://192.168.100.199:8081', 
   employeeId = 'EMP-10482' 
 }) {
+  const [currentLang, setCurrentLang] = useState(getGlobalLang());
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isCurrentWrong, setIsCurrentWrong] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = subscribeLang((newLang) => {
+      setCurrentLang(newLang);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const t = translations[currentLang];
+  const isRtl = currentLang === 'ur' || currentLang === 'ar';
 
   const satisfiesLength = newPassword.length >= 8;
   const satisfiesUppercase = /[A-Z]/.test(newPassword);
@@ -79,23 +91,25 @@ export default function ChangePasswordScreen({
   };
 
   return (
-    <View style={styles.mainWrapper}>
-      <View style={styles.navTopHeaderBar}>
+    <View style={[styles.mainWrapper, { direction: isRtl ? 'rtl' : 'ltr' }]}>
+      <View style={[styles.navTopHeaderBar, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
         <TouchableOpacity onPress={onBack} style={styles.headerBackArrowLink}>
-          <Ionicons name="chevron-back" size={20} color="#344054" />
+          <Ionicons name={isRtl ? "chevron-forward" : "chevron-back"} size={20} color="#344054" />
         </TouchableOpacity>
-        <Text style={styles.navBarHeadingCenterTitle}>Change password</Text>
+        <Text style={styles.navBarHeadingCenterTitle}>{t.changePasswordTitle}</Text>
         <View style={styles.headerRightBoxSpace} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContentLayout} showsVerticalScrollIndicator={false}>
         
-        <Text style={styles.inputFieldSectionHeaderLabel}>Current password <Text style={{ color: '#D92D20' }}>*</Text></Text>
-        <View style={[styles.textInputBoxNodeItemRow, isCurrentWrong && styles.inputFieldErrorOutlineColor]}>
-          <Ionicons name="lock-closed-outline" size={18} color="#667085" style={{ marginRight: 10 }} />
+        <Text style={[styles.inputFieldSectionHeaderLabel, { textAlign: isRtl ? 'right' : 'left' }]}>
+          {t.currentPasswordLabel} <Text style={{ color: '#D92D20' }}>*</Text>
+        </Text>
+        <View style={[styles.textInputBoxNodeItemRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }, isCurrentWrong && styles.inputFieldErrorOutlineColor]}>
+          <Ionicons name="lock-closed-outline" size={18} color="#667085" style={{ [isRtl ? 'marginLeft' : 'marginRight']: 10 }} />
           <TextInput 
-            style={styles.textInputInputElement} 
-            placeholder="Enter current password" 
+            style={[styles.textInputInputElement, { textAlign: isRtl ? 'right' : 'left' }]} 
+            placeholder={t.enterCurrentPassPlaceholder} 
             secureTextEntry 
             placeholderTextColor="#98A2B3" 
             value={currentPassword} 
@@ -103,18 +117,20 @@ export default function ChangePasswordScreen({
           />
         </View>
         {isCurrentWrong && (
-          <View style={styles.errorInlineTextContainerRow}>
-            <Ionicons name="alert-circle-outline" size={14} color="#D92D20" style={{ marginRight: 4, marginTop: 1 }} />
-            <Text style={styles.errorTextLabel}>Current password is incorrect.</Text>
+          <View style={[styles.errorInlineTextContainerRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+            <Ionicons name="alert-circle-outline" size={14} color="#D92D20" style={{ [isRtl ? 'marginLeft' : 'marginRight']: 4, marginTop: 1 }} />
+            <Text style={styles.errorTextLabel}>{t.currentPasswordError}</Text>
           </View>
         )}
 
-        <Text style={styles.inputFieldSectionHeaderLabel}>New password <Text style={{ color: '#D92D20' }}>*</Text></Text>
-        <View style={styles.textInputBoxNodeItemRow}>
-          <Ionicons name="key-outline" size={18} color="#667085" style={{ marginRight: 10 }} />
+        <Text style={[styles.inputFieldSectionHeaderLabel, { textAlign: isRtl ? 'right' : 'left' }]}>
+          {t.newPasswordLabel} <Text style={{ color: '#D92D20' }}>*</Text>
+        </Text>
+        <View style={[styles.textInputBoxNodeItemRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+          <Ionicons name="key-outline" size={18} color="#667085" style={{ [isRtl ? 'marginLeft' : 'marginRight']: 10 }} />
           <TextInput 
-            style={styles.textInputInputElement} 
-            placeholder="Enter new password" 
+            style={[styles.textInputInputElement, { textAlign: isRtl ? 'right' : 'left' }]} 
+            placeholder={t.enterNewPassPlaceholder} 
             secureTextEntry 
             placeholderTextColor="#98A2B3" 
             value={newPassword} 
@@ -122,12 +138,14 @@ export default function ChangePasswordScreen({
           />
         </View>
 
-        <Text style={styles.inputFieldSectionHeaderLabel}>Confirm password <Text style={{ color: '#D92D20' }}>*</Text></Text>
-        <View style={styles.textInputBoxNodeItemRow}>
-          <Ionicons name="key-outline" size={18} color="#667085" style={{ marginRight: 10 }} />
+        <Text style={[styles.inputFieldSectionHeaderLabel, { textAlign: isRtl ? 'right' : 'left' }]}>
+          {t.confirmPasswordLabel} <Text style={{ color: '#D92D20' }}>*</Text>
+        </Text>
+        <View style={[styles.textInputBoxNodeItemRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+          <Ionicons name="key-outline" size={18} color="#667085" style={{ [isRtl ? 'marginLeft' : 'marginRight']: 10 }} />
           <TextInput 
-            style={styles.textInputInputElement} 
-            placeholder="Confirm new password" 
+            style={[styles.textInputInputElement, { textAlign: isRtl ? 'right' : 'left' }]} 
+            placeholder={t.confirmNewPassPlaceholder} 
             secureTextEntry 
             placeholderTextColor="#98A2B3" 
             value={confirmPassword} 
@@ -136,25 +154,25 @@ export default function ChangePasswordScreen({
         </View>
 
         <View style={styles.checklistCriteriaContainerColumn}>
-          <View style={styles.checklistRowLine}>
-            <Ionicons name={satisfiesLength ? "checkmark-circle" : "radio-button-off"} size={16} color={satisfiesLength ? "#0B6655" : "#98A2B3"} style={{ marginRight: 8 }} />
-            <Text style={[styles.checklistLabelText, satisfiesLength && { color: '#101828', fontWeight: '600' }]}>At least 8 characters</Text>
+          <View style={[styles.checklistRowLine, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+            <Ionicons name={satisfiesLength ? "checkmark-circle" : "radio-button-off"} size={16} color={satisfiesLength ? "#0B6655" : "#98A2B3"} style={{ [isRtl ? 'marginLeft' : 'marginRight']: 8 }} />
+            <Text style={[styles.checklistLabelText, { textAlign: isRtl ? 'right' : 'left' }, satisfiesLength && { color: '#101828', fontWeight: '600' }]}>{t.reqMinChars}</Text>
           </View>
-          <View style={styles.checklistRowLine}>
-            <Ionicons name={satisfiesUppercase ? "checkmark-circle" : "radio-button-off"} size={16} color={satisfiesUppercase ? "#0B6655" : "#98A2B3"} style={{ marginRight: 8 }} />
-            <Text style={[styles.checklistLabelText, satisfiesUppercase && { color: '#101828', fontWeight: '600' }]}>One uppercase letter</Text>
+          <View style={[styles.checklistRowLine, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+            <Ionicons name={satisfiesUppercase ? "checkmark-circle" : "radio-button-off"} size={16} color={satisfiesUppercase ? "#0B6655" : "#98A2B3"} style={{ [isRtl ? 'marginLeft' : 'marginRight']: 8 }} />
+            <Text style={[styles.checklistLabelText, { textAlign: isRtl ? 'right' : 'left' }, satisfiesUppercase && { color: '#101828', fontWeight: '600' }]}>{t.reqUppercase}</Text>
           </View>
-          <View style={styles.checklistRowLine}>
-            <Ionicons name={satisfiesNumber ? "checkmark-circle" : "radio-button-off"} size={16} color={satisfiesNumber ? "#0B6655" : "#98A2B3"} style={{ marginRight: 8 }} />
-            <Text style={[styles.checklistLabelText, satisfiesNumber && { color: '#101828', fontWeight: '600' }]}>One number</Text>
+          <View style={[styles.checklistRowLine, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+            <Ionicons name={satisfiesNumber ? "checkmark-circle" : "radio-button-off"} size={16} color={satisfiesNumber ? "#0B6655" : "#98A2B3"} style={{ [isRtl ? 'marginLeft' : 'marginRight']: 8 }} />
+            <Text style={[styles.checklistLabelText, { textAlign: isRtl ? 'right' : 'left' }, satisfiesNumber && { color: '#101828', fontWeight: '600' }]}>{t.reqNumber}</Text>
           </View>
-          <View style={styles.checklistRowLine}>
-            <Ionicons name={satisfiesSymbol ? "checkmark-circle" : "radio-button-off"} size={16} color={satisfiesSymbol ? "#0B6655" : "#98A2B3"} style={{ marginRight: 8 }} />
-            <Text style={[styles.checklistLabelText, satisfiesSymbol && { color: '#101828', fontWeight: '600' }]}>One symbol</Text>
+          <View style={[styles.checklistRowLine, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+            <Ionicons name={satisfiesSymbol ? "checkmark-circle" : "radio-button-off"} size={16} color={satisfiesSymbol ? "#0B6655" : "#98A2B3"} style={{ [isRtl ? 'marginLeft' : 'marginRight']: 8 }} />
+            <Text style={[styles.checklistLabelText, { textAlign: isRtl ? 'right' : 'left' }, satisfiesSymbol && { color: '#101828', fontWeight: '600' }]}>{t.reqSymbol}</Text>
           </View>
-          <View style={styles.checklistRowLine}>
-            <Ionicons name={satisfiesMatch ? "checkmark-circle" : "radio-button-off"} size={16} color={satisfiesMatch ? "#0B6655" : "#98A2B3"} style={{ marginRight: 8 }} />
-            <Text style={[styles.checklistLabelText, satisfiesMatch && { color: '#101828', fontWeight: '600' }]}>Both passwords match</Text>
+          <View style={[styles.checklistRowLine, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+            <Ionicons name={satisfiesMatch ? "checkmark-circle" : "radio-button-off"} size={16} color={satisfiesMatch ? "#0B6655" : "#98A2B3"} style={{ [isRtl ? 'marginLeft' : 'marginRight']: 8 }} />
+            <Text style={[styles.checklistLabelText, { textAlign: isRtl ? 'right' : 'left' }, satisfiesMatch && { color: '#101828', fontWeight: '600' }]}>{t.reqMatch}</Text>
           </View>
         </View>
 
@@ -166,7 +184,7 @@ export default function ChangePasswordScreen({
           {loading ? (
             <ActivityIndicator color="#FFFFFF" />
           ) : (
-            <Text style={styles.primaryActionButtonNodeFixedSubmitTextLabel}>Save</Text>
+            <Text style={styles.primaryActionButtonNodeFixedSubmitTextLabel}>{t.saveBtn}</Text>
           )}
         </TouchableOpacity>
 

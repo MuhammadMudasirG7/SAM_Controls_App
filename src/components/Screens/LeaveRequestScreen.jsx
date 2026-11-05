@@ -15,17 +15,11 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
+import { translations, getGlobalLang, subscribeLang } from '../../../i18n';
 
-import EmployeeNotificationsScreen from './EmployeeNotificationsScreen'; // 🟢 New Screen Imported
+import EmployeeNotificationsScreen from './EmployeeNotificationsScreen';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-
-const LEAVE_TYPES_LIST = [
-    { id: 'annual', name: 'Annual Leave', sub: '13 of 21 days left · half day allowed', color: '#0B6655' },
-    { id: 'sick', name: 'Sick Leave', sub: '29 of 30 days left', color: '#175CD3' },
-    { id: 'emergency', name: 'Emergency Leave', sub: '4 of 5 days left · half day allowed', color: '#B24E00' },
-    { id: 'hajj', name: 'Hajj Leave', sub: '10 of 10 days left', color: '#027A48' },
-];
 
 export default function LeaveRequestScreen({
     onBack,
@@ -37,9 +31,10 @@ export default function LeaveRequestScreen({
     onNavigateToLeave,
     onNavigateToProfile
 }) {
+    const [currentLang, setCurrentLang] = useState(getGlobalLang());
     const [activeTab, setActiveTab] = useState('apply'); // 'apply', 'balance'
     const [leaveType, setLeaveType] = useState('');
-    const [leaveTypeName, setLeaveTypeName] = useState('Select leave type');
+    const [leaveTypeName, setLeaveTypeName] = useState('');
     const [fromDate, setFromDate] = useState('');
     const [toDate, setToDate] = useState('');
     const [isHalfDay, setIsHalfDay] = useState(false);
@@ -68,6 +63,23 @@ export default function LeaveRequestScreen({
     const [searchQuery, setSearchQuery] = useState('');
     const [attachedFile, setAttachedFile] = useState(null);
     const [errors, setErrors] = useState({ type: false, from: false, to: false });
+
+    useEffect(() => {
+        const unsubscribe = subscribeLang((newLang) => {
+            setCurrentLang(newLang);
+        });
+        return () => unsubscribe();
+    }, []);
+
+    const t = translations[currentLang];
+    const isRtl = currentLang === 'ur' || currentLang === 'ar';
+
+    const LEAVE_TYPES_LIST = [
+        { id: 'annual', name: t.annualLeaveName, sub: t.annualLeaveSub, color: '#0B6655' },
+        { id: 'sick', name: t.sickLeaveName, sub: t.sickLeaveSub, color: '#175CD3' },
+        { id: 'emergency', name: t.emergencyLeaveName, sub: t.emergencyLeaveSub, color: '#B24E00' },
+        { id: 'hajj', name: t.hajjLeaveName, sub: t.hajjLeaveSub, color: '#027A48' },
+    ];
 
     useEffect(() => {
         fetchLeaveData();
@@ -164,7 +176,7 @@ export default function LeaveRequestScreen({
                 body: JSON.stringify({
                     employeeId,
                     leaveType,
-                    leaveTypeName,
+                    leaveTypeName: leaveTypeName || t.selectLeaveTypePlaceholder,
                     fromDate,
                     toDate,
                     isHalfDay,
@@ -181,7 +193,7 @@ export default function LeaveRequestScreen({
                 setFromDate('');
                 setToDate('');
                 setLeaveType('');
-                setLeaveTypeName('Select leave type');
+                setLeaveTypeName('');
                 setAttachedFile(null);
                 fetchLeaveData();
                 if (onBack) onBack();
@@ -202,7 +214,6 @@ export default function LeaveRequestScreen({
 
     const updatedNotifications = (userNotifications || []).filter(n => n.status && n.status.toLowerCase() !== 'pending');
 
-    // 🟢 Render separate Notifications Screen if toggled
     if (currentView === 'notifications') {
         return (
             <EmployeeNotificationsScreen
@@ -214,24 +225,24 @@ export default function LeaveRequestScreen({
     }
 
     return (
-        <View style={styles.mainWrapper}>
+        <View style={[styles.mainWrapper, { direction: isRtl ? 'rtl' : 'ltr' }]}>
             {/* Top Navigation Bar with Bell Button & Unread Badge Counter */}
-            <View style={styles.navTopHeaderBar}>
+            <View style={[styles.navTopHeaderBar, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                 <TouchableOpacity onPress={onBack} style={styles.headerBackArrowLink}>
-                    <Ionicons name="chevron-back" size={22} color="#344054" />
+                    <Ionicons name={isRtl ? "chevron-forward" : "chevron-back"} size={22} color="#344054" />
                 </TouchableOpacity>
-                <Text style={styles.navBarHeadingCenterTitle}>Leave Request & Status</Text>
+                <Text style={styles.navBarHeadingCenterTitle}>{t.leaveReqTitle}</Text>
 
                 <TouchableOpacity
                     style={styles.bellIconButton}
                     onPress={() => {
-                        setHasUnreadNotifs(false); // 🟢 Clears the red badge when opened
-                        setCurrentView('notifications'); // 🟢 Opens the new screen
+                        setHasUnreadNotifs(false);
+                        setCurrentView('notifications');
                     }}
                 >
                     <Ionicons name="notifications-outline" size={21} color="#0B6655" />
                     {hasUnreadNotifs && updatedNotifications.length > 0 && (
-                        <View style={styles.bellBadgeDot}>
+                        <View style={[styles.bellBadgeDot, isRtl ? { left: 3, right: 'auto' } : { right: 3, left: 'auto' }]}>
                             <Text style={styles.bellBadgeText}>{updatedNotifications.length}</Text>
                         </View>
                     )}
@@ -239,12 +250,12 @@ export default function LeaveRequestScreen({
             </View>
 
             <View style={styles.segmentTabSelectorOuterContainer}>
-                <View style={styles.segmentTabSelectorInnerWrapperRow}>
+                <View style={[styles.segmentTabSelectorInnerWrapperRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                     <TouchableOpacity style={[styles.tabNavigationSelectionButton, activeTab === 'apply' && styles.activeTabOptionStateHighlight]} onPress={() => setActiveTab('apply')}>
-                        <Text style={[styles.tabNavigationSelectionButtonText, activeTab === 'apply' && styles.activeTabOptionStateText]}>Apply Leave</Text>
+                        <Text style={[styles.tabNavigationSelectionButtonText, activeTab === 'apply' && styles.activeTabOptionStateText]}>{t.applyLeaveTab}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={[styles.tabNavigationSelectionButton, activeTab === 'balance' && styles.activeTabOptionStateHighlight]} onPress={() => setActiveTab('balance')}>
-                        <Text style={[styles.tabNavigationSelectionButtonText, activeTab === 'balance' && styles.activeTabOptionStateText]}>Leave Balance</Text>
+                        <Text style={[styles.tabNavigationSelectionButtonText, activeTab === 'balance' && styles.activeTabOptionStateText]}>{t.leaveBalanceTab}</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -253,122 +264,122 @@ export default function LeaveRequestScreen({
 
                 {errorMessage && (
                     <View style={styles.errorAlertInlineBanner}>
-                        <Text style={styles.errorAlertInlineBannerText}>{errorMessage}</Text>
+                        <Text style={[styles.errorAlertInlineBannerText, { textAlign: isRtl ? 'right' : 'left' }]}>{errorMessage}</Text>
                     </View>
                 )}
 
                 {activeTab === 'apply' ? (
                     <View style={styles.formContainerMatrix}>
-                        <Text style={styles.inputFieldSectionHeaderLabel}>Leave type <Text style={{ color: '#D92D20' }}>*</Text></Text>
-                        <TouchableOpacity style={[styles.dropdownSelectTriggerButtonField, errors.type && styles.inputFieldErrorOutlineColor]} onPress={() => setIsTypeSheetVisible(true)}>
-                            <Ionicons name="document-text-outline" size={18} color="#667085" style={{ marginRight: 10 }} />
-                            <Text style={[styles.dropdownSelectTriggerTextValue, !leaveType && { color: '#98A2B3' }]}>{leaveTypeName}</Text>
+                        <Text style={[styles.inputFieldSectionHeaderLabel, { textAlign: isRtl ? 'right' : 'left' }]}>{t.leaveTypeLabel} <Text style={{ color: '#D92D20' }}>*</Text></Text>
+                        <TouchableOpacity style={[styles.dropdownSelectTriggerButtonField, { flexDirection: isRtl ? 'row-reverse' : 'row' }, errors.type && styles.inputFieldErrorOutlineColor]} onPress={() => setIsTypeSheetVisible(true)}>
+                            <Ionicons name="document-text-outline" size={18} color="#667085" style={{ [isRtl ? 'marginLeft' : 'marginRight']: 10, [isRtl ? 'marginRight' : 'marginLeft']: 0 }} />
+                            <Text style={[styles.dropdownSelectTriggerTextValue, { textAlign: isRtl ? 'right' : 'left' }, !leaveType && { color: '#98A2B3' }]}>{leaveTypeName || t.selectLeaveTypePlaceholder}</Text>
                             <Ionicons name="chevron-down" size={16} color="#667085" />
                         </TouchableOpacity>
-                        {errors.type && <Text style={styles.fieldErrorMessageDisclaimerText}>⚠ Choose a leave type.</Text>}
+                        {errors.type && <Text style={[styles.fieldErrorMessageDisclaimerText, { textAlign: isRtl ? 'right' : 'left' }]}>{t.chooseLeaveTypeError}</Text>}
 
-                        <View style={styles.doubleInputRowLayoutContainer}>
-                            <View style={{ flex: 1, marginRight: 6 }}>
-                                <Text style={styles.inputFieldSectionHeaderLabel}>From date <Text style={{ color: '#D92D20' }}>*</Text></Text>
-                                <TextInput style={[styles.textInputBoxNodeItem, errors.from && styles.inputFieldErrorOutlineColor]} placeholder="YYYY-MM-DD" placeholderTextColor="#98A2B3" value={fromDate} onChangeText={setFromDate} />
-                                {errors.from && <Text style={styles.fieldErrorMessageDisclaimerText}>⚠ Choose a start date.</Text>}
+                        <View style={[styles.doubleInputRowLayoutContainer, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                            <View style={{ flex: 1, [isRtl ? 'marginLeft' : 'marginRight']: 6 }}>
+                                <Text style={[styles.inputFieldSectionHeaderLabel, { textAlign: isRtl ? 'right' : 'left' }]}>{t.fromDateLabel} <Text style={{ color: '#D92D20' }}>*</Text></Text>
+                                <TextInput style={[styles.textInputBoxNodeItem, { textAlign: isRtl ? 'right' : 'left' }, errors.from && styles.inputFieldErrorOutlineColor]} placeholder="YYYY-MM-DD" placeholderTextColor="#98A2B3" value={fromDate} onChangeText={setFromDate} />
+                                {errors.from && <Text style={[styles.fieldErrorMessageDisclaimerText, { textAlign: isRtl ? 'right' : 'left' }]}>{t.chooseFromDateError}</Text>}
                             </View>
-                            <View style={{ flex: 1, marginLeft: 6 }}>
-                                <Text style={styles.inputFieldSectionHeaderLabel}>To date <Text style={{ color: '#D92D20' }}>*</Text></Text>
-                                <TextInput style={[styles.textInputBoxNodeItem, errors.to && styles.inputFieldErrorOutlineColor]} placeholder="YYYY-MM-DD" placeholderTextColor="#98A2B3" value={toDate} onChangeText={setToDate} />
-                                {errors.to && <Text style={styles.fieldErrorMessageDisclaimerText}>⚠ Choose an end date.</Text>}
+                            <View style={{ flex: 1, [isRtl ? 'marginRight' : 'marginLeft']: 6 }}>
+                                <Text style={[styles.inputFieldSectionHeaderLabel, { textAlign: isRtl ? 'right' : 'left' }]}>{t.toDateLabel} <Text style={{ color: '#D92D20' }}>*</Text></Text>
+                                <TextInput style={[styles.textInputBoxNodeItem, { textAlign: isRtl ? 'right' : 'left' }, errors.to && styles.inputFieldErrorOutlineColor]} placeholder="YYYY-MM-DD" placeholderTextColor="#98A2B3" value={toDate} onChangeText={setToDate} />
+                                {errors.to && <Text style={[styles.fieldErrorMessageDisclaimerText, { textAlign: isRtl ? 'right' : 'left' }]}>{t.chooseToDateError}</Text>}
                             </View>
                         </View>
 
-                        <View style={styles.toggleRowCardBlockContainer}>
-                            <View style={styles.toggleCardLeftBlockTextContent}>
-                                <Text style={styles.toggleCardLabelTitleText}>Half day</Text>
-                                <Text style={styles.toggleCardSubDescriptionLabelText}>{leaveType ? "Only for a one-day request" : "Counts as 0.5 day"}</Text>
+                        <View style={[styles.toggleRowCardBlockContainer, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                            <View style={[styles.toggleCardLeftBlockTextContent, { alignItems: isRtl ? 'flex-end' : 'flex-start' }]}>
+                                <Text style={styles.toggleCardLabelTitleText}>{t.halfDayLabel}</Text>
+                                <Text style={styles.toggleCardSubDescriptionLabelText}>{leaveType ? t.halfDaySubSingle : t.halfDaySubGeneral}</Text>
                             </View>
                             <Switch trackColor={{ false: '#E4E7EC', true: '#0B6655' }} value={isHalfDay} onValueChange={setIsHalfDay} />
                         </View>
 
-                        <View style={styles.totalDaysCardBoxContainer}>
-                            <View style={styles.toggleCardLeftBlockTextContent}>
-                                <Text style={styles.toggleCardLabelTitleText}>Total days</Text>
-                                <Text style={styles.toggleCardSubDescriptionLabelText}>Calculated by the server · weekly off days excluded</Text>
+                        <View style={[styles.totalDaysCardBoxContainer, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                            <View style={[styles.toggleCardLeftBlockTextContent, { alignItems: isRtl ? 'flex-end' : 'flex-start' }]}>
+                                <Text style={styles.toggleCardLabelTitleText}>{t.totalDaysLabel}</Text>
+                                <Text style={styles.toggleCardSubDescriptionLabelText}>{t.totalDaysSub}</Text>
                             </View>
                             <Text style={styles.totalDaysNumericDisplayValueValue}>{totalDaysCalculated}</Text>
                         </View>
 
-                        <Text style={styles.inputFieldSectionHeaderLabel}>Reason</Text>
+                        <Text style={[styles.inputFieldSectionHeaderLabel, { textAlign: isRtl ? 'right' : 'left' }]}>{t.reasonLabel}</Text>
                         <View style={styles.textAreaBoxNodeContainer}>
-                            <TextInput style={styles.textAreaInputFieldElement} placeholder="Why do you need this leave?" placeholderTextColor="#98A2B3" multiline={true} numberOfLines={4} value={reasonText} onChangeText={setReasonText} maxLength={500} />
-                            <Text style={styles.textAreaCharacterCounterMetricLabel}>{reasonText.length}/500</Text>
+                            <TextInput style={[styles.textAreaInputFieldElement, { textAlign: isRtl ? 'right' : 'left' }]} placeholder={t.reasonPlaceholder} placeholderTextColor="#98A2B3" multiline={true} numberOfLines={4} value={reasonText} onChangeText={setReasonText} maxLength={500} />
+                            <Text style={[styles.textAreaCharacterCounterMetricLabel, { textAlign: isRtl ? 'left' : 'right' }]}>{reasonText.length}/500</Text>
                         </View>
 
-                        <Text style={styles.inputFieldSectionHeaderLabel}>Attach document <Text style={styles.optionalMutedLabelText}>(optional)</Text></Text>
+                        <Text style={[styles.inputFieldSectionHeaderLabel, { textAlign: isRtl ? 'right' : 'left' }]}>{t.attachDocLabel} <Text style={styles.optionalMutedLabelText}>{t.optionalLabel}</Text></Text>
 
                         {attachedFile ? (
-                            <View style={styles.attachedFileIndicatorRowBox}>
-                                <Ionicons name="document-outline" size={18} color="#475467" style={{ marginRight: 10 }} />
-                                <Text style={styles.attachedFileIndicatorRowBoxText} numberOfLines={1}>
+                            <View style={[styles.attachedFileIndicatorRowBox, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                                <Ionicons name="document-outline" size={18} color="#475467" style={{ [isRtl ? 'marginLeft' : 'marginRight']: 10, [isRtl ? 'marginRight' : 'marginLeft']: 0 }} />
+                                <Text style={[styles.attachedFileIndicatorRowBoxText, { textAlign: isRtl ? 'right' : 'left' }]} numberOfLines={1}>
                                     {attachedFile.name} <Text style={{ color: '#98A2B3', fontWeight: '400' }}>{attachedFile.size}</Text>
                                 </Text>
                                 <TouchableOpacity onPress={() => setAttachedFile(null)}><Ionicons name="close" size={18} color="#667085" /></TouchableOpacity>
                             </View>
                         ) : (
-                            <View style={styles.doubleButtonRowLayoutContainer}>
-                                <TouchableOpacity style={styles.mediaPickerSquareActionButton} onPress={launchMobileCamera}>
-                                    <Ionicons name="camera-outline" size={18} color="#344054" style={{ marginRight: 8 }} />
-                                    <Text style={styles.mediaPickerSquareActionButtonText}>Camera</Text>
+                            <View style={[styles.doubleButtonRowLayoutContainer, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                                <TouchableOpacity style={[styles.mediaPickerSquareActionButton, { flexDirection: isRtl ? 'row-reverse' : 'row' }]} onPress={launchMobileCamera}>
+                                    <Ionicons name="camera-outline" size={18} color="#344054" style={{ [isRtl ? 'marginLeft' : 'marginRight']: 8, [isRtl ? 'marginRight' : 'marginLeft']: 0 }} />
+                                    <Text style={styles.mediaPickerSquareActionButtonText}>{t.cameraBtn}</Text>
                                 </TouchableOpacity>
-                                <TouchableOpacity style={styles.mediaPickerSquareActionButton} onPress={pickMobileDocument}>
-                                    <Ionicons name="cloud-upload-outline" size={18} color="#344054" style={{ marginRight: 8 }} />
-                                    <Text style={styles.mediaPickerSquareActionButtonText}>Files</Text>
+                                <TouchableOpacity style={[styles.mediaPickerSquareActionButton, { flexDirection: isRtl ? 'row-reverse' : 'row' }]} onPress={pickMobileDocument}>
+                                    <Ionicons name="cloud-upload-outline" size={18} color="#344054" style={{ [isRtl ? 'marginLeft' : 'marginRight']: 8, [isRtl ? 'marginRight' : 'marginLeft']: 0 }} />
+                                    <Text style={styles.mediaPickerSquareActionButtonText}>{t.filesBtn}</Text>
                                 </TouchableOpacity>
                             </View>
                         )}
-                        <Text style={styles.mediaAttachmentFormatMutedDisclaimerNote}>PDF, JPG or PNG · up to 5 MB</Text>
+                        <Text style={[styles.mediaAttachmentFormatMutedDisclaimerNote, { textAlign: isRtl ? 'right' : 'left' }]}>{t.docFormatNote}</Text>
 
                         <TouchableOpacity style={styles.primaryActionButtonNodeFixedSubmit} onPress={handleFormSubmit} disabled={submitting}>
                             {submitting ? (
                                 <ActivityIndicator color="#FFFFFF" size="small" />
                             ) : (
-                                <Text style={styles.primaryActionButtonNodeFixedSubmitTextLabel}>Submit request</Text>
+                                <Text style={styles.primaryActionButtonNodeFixedSubmitTextLabel}>{t.submitReqBtn}</Text>
                             )}
                         </TouchableOpacity>
                     </View>
                 ) : (
                     <View style={styles.leaveBalanceGridsListWrapperContainer}>
-                        <Text style={styles.leaveYearTimelineHeaderMutedLabel}>Leave year 2026 · 1 Jan – 31 Dec</Text>
+                        <Text style={[styles.leaveYearTimelineHeaderMutedLabel, { textAlign: isRtl ? 'right' : 'left' }]}>{t.leaveYearHeader}</Text>
 
                         {loadingBalance ? (
                             <ActivityIndicator size="large" color="#0B6655" style={{ marginTop: 40 }} />
                         ) : (
                             <>
                                 <View style={styles.balanceDataFloatingCardContainer}>
-                                    <View style={styles.balanceCardHeaderRowLine}>
-                                        <Text style={styles.balanceCardMainTitleHeader}>Annual Leave</Text>
+                                    <View style={[styles.balanceCardHeaderRowLine, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                                        <Text style={styles.balanceCardMainTitleHeader}>{t.annualLeaveName}</Text>
                                         <Text style={styles.balanceCardFractionRatioValue}>{leaveBalances.annual.remaining} <Text style={{ color: '#98A2B3', fontWeight: '500' }}>/ {leaveBalances.annual.total}</Text></Text>
                                     </View>
                                     <View style={styles.progressHorizontalTrackBarBackground}>
-                                        <View style={[styles.progressHorizontalActiveIndicatorFillerColorBar, { width: `${(leaveBalances.annual.remaining / leaveBalances.annual.total) * 100}%`, backgroundColor: '#0B6655' }]} />
+                                        <View style={[styles.progressHorizontalActiveIndicatorFillerColorBar, { width: `${(leaveBalances.annual.remaining / leaveBalances.annual.total) * 100}%`, backgroundColor: '#0B6655', [isRtl ? 'right' : 'left']: 0 }]} />
                                     </View>
-                                    <View style={styles.balanceCardGridFooterMetricsRow}>
-                                        <View><Text style={styles.footerMetricLabel}>Taken</Text><Text style={styles.footerMetricValue}>{leaveBalances.annual.taken}</Text></View>
-                                        <View><Text style={styles.footerMetricLabel}>Pending</Text><Text style={[styles.footerMetricValue, { color: '#B24E00' }]}>{leaveBalances.annual.pending}</Text></View>
-                                        <View><Text style={styles.footerMetricLabel}>Remaining</Text><Text style={[styles.footerMetricValue, { color: '#027A48' }]}>{leaveBalances.annual.remaining}</Text></View>
+                                    <View style={[styles.balanceCardGridFooterMetricsRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                                        <View style={{ alignItems: isRtl ? 'flex-end' : 'flex-start' }}><Text style={styles.footerMetricLabel}>{t.takenLabel}</Text><Text style={styles.footerMetricValue}>{leaveBalances.annual.taken}</Text></View>
+                                        <View style={{ alignItems: isRtl ? 'flex-end' : 'flex-start' }}><Text style={styles.footerMetricLabel}>{t.pendingLabel}</Text><Text style={[styles.footerMetricValue, { color: '#B24E00' }]}>{leaveBalances.annual.pending}</Text></View>
+                                        <View style={{ alignItems: isRtl ? 'flex-end' : 'flex-start' }}><Text style={styles.footerMetricLabel}>{t.leftLabel}</Text><Text style={[styles.footerMetricValue, { color: '#027A48' }]}>{leaveBalances.annual.remaining}</Text></View>
                                     </View>
                                 </View>
 
                                 <View style={styles.balanceDataFloatingCardContainer}>
-                                    <View style={styles.balanceCardHeaderRowLine}>
-                                        <Text style={styles.balanceCardMainTitleHeader}>Sick Leave</Text>
+                                    <View style={[styles.balanceCardHeaderRowLine, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                                        <Text style={styles.balanceCardMainTitleHeader}>{t.sickLeaveName}</Text>
                                         <Text style={styles.balanceCardFractionRatioValue}>{leaveBalances.sick.remaining} <Text style={{ color: '#98A2B3', fontWeight: '500' }}>/ {leaveBalances.sick.total}</Text></Text>
                                     </View>
                                     <View style={styles.progressHorizontalTrackBarBackground}>
-                                        <View style={[styles.progressHorizontalActiveIndicatorFillerColorBar, { width: `${(leaveBalances.sick.remaining / leaveBalances.sick.total) * 100}%`, backgroundColor: '#175CD3' }]} />
+                                        <View style={[styles.progressHorizontalActiveIndicatorFillerColorBar, { width: `${(leaveBalances.sick.remaining / leaveBalances.sick.total) * 100}%`, backgroundColor: '#175CD3', [isRtl ? 'right' : 'left']: 0 }]} />
                                     </View>
-                                    <View style={styles.balanceCardGridFooterMetricsRow}>
-                                        <View><Text style={styles.footerMetricLabel}>Taken</Text><Text style={styles.footerMetricValue}>{leaveBalances.sick.taken}</Text></View>
-                                        <View><Text style={styles.footerMetricLabel}>Pending</Text><Text style={styles.footerMetricValue}>{leaveBalances.sick.pending}</Text></View>
-                                        <View><Text style={styles.footerMetricLabel}>Remaining</Text><Text style={[styles.footerMetricValue, { color: '#175CD3' }]}>{leaveBalances.sick.remaining}</Text></View>
+                                    <View style={[styles.balanceCardGridFooterMetricsRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                                        <View style={{ alignItems: isRtl ? 'flex-end' : 'flex-start' }}><Text style={styles.footerMetricLabel}>{t.takenLabel}</Text><Text style={styles.footerMetricValue}>{leaveBalances.sick.taken}</Text></View>
+                                        <View style={{ alignItems: isRtl ? 'flex-end' : 'flex-start' }}><Text style={styles.footerMetricLabel}>{t.pendingLabel}</Text><Text style={styles.footerMetricValue}>{leaveBalances.sick.pending}</Text></View>
+                                        <View style={{ alignItems: isRtl ? 'flex-end' : 'flex-start' }}><Text style={styles.footerMetricLabel}>{t.leftLabel}</Text><Text style={[styles.footerMetricValue, { color: '#175CD3' }]}>{leaveBalances.sick.remaining}</Text></View>
                                     </View>
                                 </View>
                             </>
@@ -382,13 +393,13 @@ export default function LeaveRequestScreen({
                 <TouchableOpacity style={styles.modalFilterOverlayDismissBackground} activeOpacity={1} onPress={() => setIsTypeSheetVisible(false)}>
                     <View style={styles.bottomSheetFilterWindowContainer}>
                         <View style={styles.bottomSheetHeaderCenterIndicatorLineBar} />
-                        <Text style={styles.bottomSheetMainHeadingTitleText}>Select Leave Type</Text>
+                        <Text style={styles.bottomSheetMainHeadingTitleText}>{t.selectLeaveTypeModalTitle}</Text>
 
-                        <View style={styles.searchBarContainerBoxFrame}>
-                            <Ionicons name="search-outline" size={16} color="#98A2B3" style={{ marginRight: 8 }} />
+                        <View style={[styles.searchBarContainerBoxFrame, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                            <Ionicons name="search-outline" size={16} color="#98A2B3" style={{ [isRtl ? 'marginLeft' : 'marginRight']: 8, [isRtl ? 'marginRight' : 'marginLeft']: 0 }} />
                             <TextInput
-                                style={styles.searchBarInputElementField}
-                                placeholder="Search leave type..."
+                                style={[styles.searchBarInputElementField, { textAlign: isRtl ? 'right' : 'left' }]}
+                                placeholder={t.searchLeaveTypePlaceholder}
                                 placeholderTextColor="#98A2B3"
                                 value={searchQuery}
                                 onChangeText={setSearchQuery}
@@ -399,7 +410,7 @@ export default function LeaveRequestScreen({
                             {filteredLeaveTypes.map((item) => (
                                 <TouchableOpacity
                                     key={item.id}
-                                    style={styles.leaveTypeSelectionListItemRow}
+                                    style={[styles.leaveTypeSelectionListItemRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}
                                     onPress={() => {
                                         setLeaveType(item.id);
                                         setLeaveTypeName(item.name);
@@ -407,12 +418,12 @@ export default function LeaveRequestScreen({
                                         setSearchQuery('');
                                     }}
                                 >
-                                    <View style={[styles.colorDotBadgeIndicatorMarker, { backgroundColor: item.color }]} />
-                                    <View style={{ flex: 1 }}>
+                                    <View style={[styles.colorDotBadgeIndicatorMarker, { backgroundColor: item.color, [isRtl ? 'marginLeft' : 'marginRight']: 12, [isRtl ? 'marginRight' : 'marginLeft']: 0 }]} />
+                                    <View style={{ flex: 1, alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
                                         <Text style={styles.leaveTypeNameStringHeader}>{item.name}</Text>
                                         <Text style={styles.leaveTypeSubMetricsDescriptionText}>{item.sub}</Text>
                                     </View>
-                                    <Ionicons name="chevron-forward" size={16} color="#D0D5DD" />
+                                    <Ionicons name={isRtl ? "chevron-back" : "chevron-forward"} size={16} color="#D0D5DD" />
                                 </TouchableOpacity>
                             ))}
                         </ScrollView>
@@ -421,22 +432,22 @@ export default function LeaveRequestScreen({
             </Modal>
 
             {/* Sticky Bottom Navigation Bar */}
-            <View style={styles.bottomTabStickyNavBarContainer}>
+            <View style={[styles.bottomTabStickyNavBarContainer, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                 <TouchableOpacity style={styles.tabBarItemActionLink} onPress={onNavigateHome}>
                     <Ionicons name="home" size={22} color="#98A2B3" />
-                    <Text style={styles.tabBarItemLabelText}>Home</Text>
+                    <Text style={styles.tabBarItemLabelText}>{t.navHome}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.tabBarItemActionLink} onPress={onNavigateToAttendance}>
                     <Ionicons name="calendar" size={22} color="#98A2B3" />
-                    <Text style={styles.tabBarItemLabelText}>Attendance</Text>
+                    <Text style={styles.tabBarItemLabelText}>{t.navAttendance}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.tabBarItemActionLink} onPress={onNavigateToLeave}>
                     <Ionicons name="document-text" size={22} color="#0B6655" />
-                    <Text style={[styles.tabBarItemLabelText, { color: '#0B6655' }]}>Leave</Text>
+                    <Text style={[styles.tabBarItemLabelText, { color: '#0B6655' }]}>{t.navLeave}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.tabBarItemActionLink} onPress={onNavigateToProfile}>
                     <Ionicons name="person" size={22} color="#98A2B3" />
-                    <Text style={styles.tabBarItemLabelText}>Profile</Text>
+                    <Text style={styles.tabBarItemLabelText}>{t.navProfile}</Text>
                 </TouchableOpacity>
             </View>
         </View>
@@ -449,7 +460,7 @@ const styles = StyleSheet.create({
     headerBackArrowLink: { padding: 4 },
     navBarHeadingCenterTitle: { fontSize: 16, fontWeight: '700', color: '#101828' },
     bellIconButton: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#F2F4F7', justifyContent: 'center', alignItems: 'center', position: 'relative' },
-    bellBadgeDot: { position: 'absolute', top: 3, right: 3, backgroundColor: '#B42318', width: 14, height: 14, borderRadius: 7, justifyContent: 'center', alignItems: 'center' },
+    bellBadgeDot: { position: 'absolute', top: 3, backgroundColor: '#B42318', width: 14, height: 14, borderRadius: 7, justifyContent: 'center', alignItems: 'center' },
     bellBadgeText: { color: '#FFF', fontSize: 8, fontWeight: 'bold' },
     segmentTabSelectorOuterContainer: { paddingHorizontal: 16, paddingTop: 14 },
     segmentTabSelectorInnerWrapperRow: { flexDirection: 'row', backgroundColor: '#F2F4F7', borderRadius: 10, padding: 4, width: '100%' },
@@ -477,7 +488,7 @@ const styles = StyleSheet.create({
     totalDaysNumericDisplayValueValue: { fontSize: 16, fontWeight: '800', color: '#101828', width: 24, textAlign: 'right' },
     textAreaBoxNodeContainer: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D0D5DD', borderRadius: 12, padding: 12, minHeight: 90 },
     textAreaInputFieldElement: { fontSize: 14, fontWeight: '500', color: '#101828', textAlignVertical: 'top', padding: 0 },
-    textAreaCharacterCounterMetricLabel: { fontSize: 11, color: '#98A2B3', textAlign: 'right', marginTop: 6 },
+    textAreaCharacterCounterMetricLabel: { fontSize: 11, color: '#98A2B3', marginTop: 6 },
     attachedFileIndicatorRowBox: { flexDirection: 'row', backgroundColor: '#F2F4F7', borderRadius: 10, padding: 12, alignItems: 'center', justifyContent: 'space-between', marginTop: 6 },
     attachedFileIndicatorRowBoxText: { flex: 1, fontSize: 13, fontWeight: '600', color: '#344054', marginRight: 8 },
     doubleButtonRowLayoutContainer: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
@@ -492,22 +503,22 @@ const styles = StyleSheet.create({
     balanceCardHeaderRowLine: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
     balanceCardMainTitleHeader: { fontSize: 14, fontWeight: '700', color: '#101828' },
     balanceCardFractionRatioValue: { fontSize: 14, fontWeight: '700', color: '#0B6655' },
-    progressHorizontalTrackBarBackground: { height: 6, backgroundColor: '#F2F4F7', borderRadius: 3, overflow: 'hidden', marginBottom: 12 },
-    progressHorizontalActiveIndicatorFillerColorBar: { height: '100%', borderRadius: 3 },
+    progressHorizontalTrackBarBackground: { height: 6, backgroundColor: '#F2F4F7', borderRadius: 3, overflow: 'hidden', marginBottom: 12, position: 'relative' },
+    progressHorizontalActiveIndicatorFillerColorBar: { height: '100%', borderRadius: 3, position: 'absolute' },
     balanceCardGridFooterMetricsRow: { flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#F2F4F7', paddingTop: 8 },
     footerMetricLabel: { fontSize: 11, color: '#667085' },
     footerMetricValue: { fontSize: 13, fontWeight: '700', color: '#101828', marginTop: 2 },
     modalFilterOverlayDismissBackground: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-    bottomSheetFilterWindowContainer: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 16 },
-    bottomSheetHeaderCenterIndicatorLineBar: { width: 36, height: 4, backgroundColor: '#EAECF0', borderRadius: 2, alignSelf: 'center', marginBottom: 12 },
-    bottomSheetMainHeadingTitleText: { fontSize: 16, fontWeight: '700', color: '#101828', marginBottom: 12 },
-    searchBarContainerBoxFrame: { flexDirection: 'row', backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: '#D0D5DD', borderRadius: 10, paddingHorizontal: 10, height: 40, alignItems: 'center' },
+    bottomSheetFilterWindowContainer: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 30 },
+    bottomSheetHeaderCenterIndicatorLineBar: { width: 36, height: 4, backgroundColor: '#EAECF0', borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
+    bottomSheetMainHeadingTitleText: { fontSize: 16, fontWeight: '700', color: '#101828', marginBottom: 12, textAlign: 'center' },
+    searchBarContainerBoxFrame: { flexDirection: 'row', backgroundColor: '#F2F4F7', borderRadius: 10, height: 40, alignItems: 'center', paddingHorizontal: 12, marginBottom: 10 },
     searchBarInputElementField: { flex: 1, fontSize: 13, color: '#101828' },
     leaveTypeSelectionListItemRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F2F4F7' },
-    colorDotBadgeIndicatorMarker: { width: 10, height: 10, borderRadius: 5, marginRight: 10 },
-    leaveTypeNameStringHeader: { fontSize: 14, fontWeight: '700', color: '#101828' },
-    leaveTypeSubMetricsDescriptionText: { fontSize: 11, color: '#667085', marginTop: 2 },
-    bottomTabStickyNavBarContainer: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 60, backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: '#EAECF0', flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' },
-    tabBarItemActionLink: { alignItems: 'center', justifyContent: 'center' },
-    tabBarItemLabelText: { fontSize: 10, color: '#98A2B3', marginTop: 2, fontWeight: '500' }
+    colorDotBadgeIndicatorMarker: { width: 10, height: 10, borderRadius: 5 },
+    leaveTypeNameStringHeader: { fontSize: 14, fontWeight: '600', color: '#101828' },
+    leaveTypeSubMetricsDescriptionText: { fontSize: 12, color: '#667085', marginTop: 2 },
+    bottomTabStickyNavBarContainer: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 68, backgroundColor: '#FFFFFF', borderTopWidth: 1, borderColor: '#EAECF0', flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', paddingBottom: 10, zIndex: 100 },
+    tabBarItemActionLink: { flex: 1, alignItems: 'center', justifyContent: 'center', flexDirection: 'column' },
+    tabBarItemLabelText: { fontSize: 11, color: '#98A2B3', marginTop: 4, fontWeight: '600', textAlign: 'center' }
 });

@@ -10,38 +10,9 @@ import {
     Modal
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { translations, getGlobalLang, subscribeLang, setGlobalLang } from '../../../i18n';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-
-const translations = {
-    en: {
-        hello: "Hello", siteEngineer: "Site Engineer · Al Olaya Operations Centre",
-        todayStatus: "Today's status", totalHours: "Total hours", lastCheckIn: "Last check-in", lastCheckOut: "Last check-out",
-        notCheckedIn: "Not checked in", checkedIn: "Checked in", checkedOut: "Checked out", onLeave: "On leave", weeklyOff: "Weekly off",
-        today: "Today", yesterday: "Yesterday", weeklyOffBanner: "Today is a weekly off day for your holiday group.",
-        bannerIn: "You're already checked in. Hourly presence is on.", bannerLeave: "You're on approved Annual Leave today.",
-        checkIn: "Check-in", checkOut: "Check-out", hourly: "Hourly Presence", attendance: "Attendance", leaveReq: "Leave Request", myReq: "My Requests",
-        home: "Home", profile: "Profile", leave: "Leave", selectLang: "Select Language", toastSuccess: "Check-in successful!"
-    },
-    ur: {
-        hello: "سلام", siteEngineer: "سائٹ انجینئر · العلیہ آپریشنز سینٹر",
-        todayStatus: "آج کی صورتحال", totalHours: "کل گھنٹے", lastCheckIn: "پہلی حاضری", lastCheckOut: "آخری روانگی",
-        notCheckedIn: "حاضری نہیں ہوئی", checkedIn: "حاضر ہیں", checkedOut: "رخصت ہو گئے", onLeave: "چھٹی پر ہیں", weeklyOff: "ہفتہ وار چھٹی",
-        today: "آج", yesterday: "گزشتہ کل", weeklyOffBanner: "آج آپ کے ہالیڈے گروپ کے لیے ہفتہ وار چھٹی کا دن ہے۔",
-        bannerIn: "آپ پہلے ہی چیک ان کر چکے ہیں۔ گھنٹہ وار موجودگی فعال ہے۔", bannerLeave: "آپ آج منظور شدہ سالانہ چھٹی پر ہیں۔",
-        checkIn: "حاضری لگائیں", checkOut: "روانگی درج کریں", hourly: "گھنٹہ وار موجودگی", attendance: "حاضری ریکارڈ", leaveReq: "چھٹی کی درخواست", myReq: "میری درخواستیں",
-        home: "ہوم", profile: "پروفائل", leave: "چھٹی", selectLang: "زبان منتخب کریں", toastSuccess: "حاضری کامیابی سے لگ گئی!"
-    },
-    ar: {
-        hello: "مرحباً", siteEngineer: "مهندس الموقع · مركز عمليات العليا",
-        todayStatus: "حالة اليوم", totalHours: "مجموع الساعات", lastCheckIn: "آخر تسجيل دخول", lastCheckOut: "آخر تسجيل خروج",
-        notCheckedIn: "لم يتم تسجيل الدخول", checkedIn: "تم تسجيل الدخول", checkedOut: "تم تسجيل الخروج", onLeave: "في إجازة", weeklyOff: "عطلة أسبوعية",
-        today: "اليوم", yesterday: "الأمس", weeklyOffBanner: "اليوم هو يوم عطلة أسبوعية لمجموعة العطلات الخاصة بك.",
-        bannerIn: "لقد قمت بتسجيل الدخول بالفعل. التواجد الساعي نشط.", bannerLeave: "أنت في إجازة سنوية معتمدة اليوم.",
-        checkIn: "تسجيل دخول", checkOut: "تسجيل خروج", hourly: "التواجد الساعي", attendance: "الحضور", leaveReq: "طلب إجازة", myReq: "طلباتي",
-        home: "الرئيسية", profile: "ملف تعريفي", leave: "إجازة", selectLang: "اختر اللغة", toastSuccess: "تم تسجيل الدخول بنجاح!"
-    }
-};
 
 let globalDashboardCache = {
     state: 'default',
@@ -65,21 +36,31 @@ export default function DashboardScreen({
     onNavigateToProfile,
     onNavigateHome
 }) {
-    const [currentLang, setCurrentScreenLang] = useState('en');
+    const [currentLang, setCurrentScreenLang] = useState(getGlobalLang());
     const [isLangModalVisible, setIsLangModalVisible] = useState(false);
 
     const [dashboardState, setDashboardState] = useState(globalDashboardCache.state);
     const [totalHours, setTotalHours] = useState(globalDashboardCache.totalHours);
     const [lastCheckIn, setLastCheckIn] = useState(globalDashboardCache.lastCheckIn);
     const [lastCheckOut, setLastCheckOut] = useState(globalDashboardCache.lastCheckOut);
-    const [showBanner, setShowBanner] = useState(true);
     
     const [showToast, setShowToast] = useState(justCheckedIn && !hasToastBeenShown);
+
+    const [leaveAlertModal, setLeaveAlertModal] = useState(false);
+    const [alertMessage, setAlertMessage] = useState('');
+    const [alertStatus, setAlertStatus] = useState('');
 
     const isMounted = useRef(true);
     const isFetchingStatus = useRef(false);
 
-    const t = translations[currentLang];
+    useEffect(() => {
+        const unsubscribe = subscribeLang((newLang) => {
+            setCurrentScreenLang(newLang);
+        });
+        return () => unsubscribe();
+    }, []);
+
+    const t = translations[currentLang] || translations.en;
     const isRtl = currentLang === 'ur' || currentLang === 'ar';
 
     const empId = userProfileData?.employeeId || 'EMP-10482';
@@ -140,11 +121,52 @@ export default function DashboardScreen({
         }
     };
 
+    const checkAdminLeaveActions = async () => {
+        try {
+            const cleanBaseUrl = (serverAddress || 'http://192.168.100.199:8081').replace(/\/+$/, '');
+            const res = await fetch(`${cleanBaseUrl}/api/leave/requests?employeeId=${encodeURIComponent(empId)}`);
+            const json = await res.json();
+
+            const requestsList = json.requests || json.requestsHistory || [];
+            
+            const handledLeave = requestsList.find(req => {
+                const status = (req.status || '').toLowerCase();
+                return status === 'approved' || status === 'rejected';
+            });
+
+            if (handledLeave) {
+                const leaveId = handledLeave._id || handledLeave.id;
+                const statusLower = (handledLeave.status || '').toLowerCase();
+                const isApproved = statusLower === 'approved';
+
+                if (globalThis.lastNotifiedLeaveId !== leaveId) {
+                    globalThis.lastNotifiedLeaveId = leaveId;
+
+                    setAlertStatus(isApproved ? 'approved' : 'rejected');
+                    setAlertMessage(
+                        isApproved 
+                            ? `Aapki ${handledLeave.type || handledLeave.leaveType || 'leave'} request approve ho gayi hai!`
+                            : `Aapki ${handledLeave.type || handledLeave.leaveType || 'leave'} request reject kar di gayi hai.`
+                    );
+                    setLeaveAlertModal(true);
+
+                    setTimeout(() => {
+                        if (isMounted.current) {
+                            setLeaveAlertModal(false);
+                        }
+                    }, 3500);
+                }
+            }
+        } catch (err) {
+            console.log("Error checking leave status:", err);
+        }
+    };
+
     useEffect(() => {
         isMounted.current = true;
 
-        // NO INTERVAL/POLLING HERE - Runs ONLY ONCE when component mounts/switches
         fetchLiveStatus();
+        checkAdminLeaveActions();
 
         if (justCheckedIn && !hasToastBeenShown) {
             hasToastBeenShown = true;
@@ -160,24 +182,19 @@ export default function DashboardScreen({
         };
     }, [empId, serverAddress, justCheckedIn]);
 
-    useEffect(() => {
-        if (dashboardState !== 'default') {
-            setShowBanner(true);
-            const bannerTimer = setTimeout(() => {
-                if (isMounted.current) setShowBanner(false);
-            }, 3000);
-            return () => clearTimeout(bannerTimer);
-        }
-    }, [dashboardState]);
+    const handleLanguageChange = (langCode) => {
+        setGlobalLang(langCode);
+        setIsLangModalVisible(false);
+    };
 
     return (
-        <View style={styles.mainWrapper}>
+        <View style={[styles.mainWrapper, { direction: isRtl ? 'rtl' : 'ltr' }]}>
             <StatusBar barStyle="light-content" backgroundColor="#0B6655" translucent={false} />
 
             {showToast && (
-                <View style={styles.toastContainer}>
-                    <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
-                    <Text style={styles.toastText}>{t.toastSuccess}</Text>
+                <View style={[styles.toastContainer, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                    <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" style={{ [isRtl ? 'marginLeft' : 'marginRight']: 8 }} />
+                    <Text style={styles.toastText}>{t.toastCheckInSuccess}</Text>
                 </View>
             )}
 
@@ -196,9 +213,9 @@ export default function DashboardScreen({
                             <Text style={styles.avatarInitialText}>{nameInitials}</Text>
                         </View>
                         <View style={[styles.profileDetailsContentBlock, { alignItems: isRtl ? 'flex-end' : 'flex-start' }]}>
-                            <Text style={styles.employeeNameTitle}>{t.hello}, {empName}</Text>
+                            <Text style={styles.employeeNameTitle}>{t.hello || 'Hello'}, {empName}</Text>
                             <Text style={styles.employeeIdLabel}>{empId}</Text>
-                            <Text style={[styles.employeeRoleLabel, { textAlign: isRtl ? 'right' : 'left' }]}>{t.siteEngineer}</Text>
+                            <Text style={[styles.employeeRoleLabel, { textAlign: isRtl ? 'right' : 'left' }]}>{t.siteEngineerRole}</Text>
                         </View>
                     </View>
                 </View>
@@ -208,41 +225,33 @@ export default function DashboardScreen({
                 <View style={[styles.statusGridRowContainer, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                     <View style={[styles.statusMiniDataCardBox, { alignItems: isRtl ? 'flex-end' : 'flex-start' }]}>
                         <Text style={styles.cardSectionLabel}>{t.todayStatus}</Text>
-                        {dashboardState === 'default' && <Text style={[styles.statusMainValueText, { color: '#344054' }]}>{t.notCheckedIn}</Text>}
-                        {dashboardState === 'checked_in' && <Text style={[styles.statusMainValueText, { color: '#0B6655' }]}>{t.checkedIn}</Text>}
-                        {dashboardState === 'checked_out' && <Text style={[styles.statusMainValueText, { color: '#D92D20' }]}>{t.checkedOut}</Text>}
-                        {dashboardState === 'on_leave' && <Text style={[styles.statusMainValueText, { color: '#175CD3' }]}>{t.onLeave}</Text>}
-                        {dashboardState === 'weekly_off' && <Text style={[styles.statusMainValueText, { color: '#344054' }]}>{t.weeklyOff}</Text>}
+                        {(!dashboardState || dashboardState === 'default' || dashboardState === 'checked_out') && <Text style={[styles.statusMainValueText, { color: '#D92D20' }]}>{t.statusCheckedOut}</Text>}
+                        {dashboardState === 'checked_in' && <Text style={[styles.statusMainValueText, { color: '#0B6655' }]}>{t.statusCheckedIn}</Text>}
+                        {dashboardState === 'on_leave' && <Text style={[styles.statusMainValueText, { color: '#175CD3' }]}>{t.statusOnLeave}</Text>}
+                        {dashboardState === 'weekly_off' && <Text style={[styles.statusMainValueText, { color: '#344054' }]}>{t.statusWeeklyOff}</Text>}
                         <Text style={styles.cardFooterSubtext}>{getFormattedTodayDate()}</Text>
                     </View>
 
                     <View style={[styles.statusMiniDataCardBox, { alignItems: isRtl ? 'flex-end' : 'flex-start' }]}>
-                        <Text style={styles.cardSectionLabel}>{t.totalHours}</Text>
+                        <Text style={styles.cardSectionLabel}>{t.totalHoursLabel}</Text>
                         <Text style={styles.statusMainValueText}>{totalHours}</Text>
-                        <Text style={styles.cardFooterSubtext}>{t.today}</Text>
+                        <Text style={styles.cardFooterSubtext}>{t.timeToday}</Text>
                     </View>
                 </View>
 
                 <View style={[styles.statusGridRowContainer, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                     <View style={[styles.statusMiniDataCardBox, { alignItems: isRtl ? 'flex-end' : 'flex-start' }]}>
-                        <Text style={styles.cardSectionLabel}>{t.lastCheckIn}</Text>
+                        <Text style={styles.cardSectionLabel}>{t.lastCheckInLabel}</Text>
                         <Text style={styles.statusMainValueText}>{lastCheckIn}</Text>
-                        <Text style={styles.cardFooterSubtext}>{dashboardState === 'checked_in' ? t.today : t.yesterday}</Text>
+                        <Text style={styles.cardFooterSubtext}>{dashboardState === 'checked_in' ? t.timeToday : t.timeYesterday}</Text>
                     </View>
 
                     <View style={[styles.statusMiniDataCardBox, { alignItems: isRtl ? 'flex-end' : 'flex-start' }]}>
-                        <Text style={styles.cardSectionLabel}>{t.lastCheckOut}</Text>
+                        <Text style={styles.cardSectionLabel}>{t.lastCheckOutLabel}</Text>
                         <Text style={styles.statusMainValueText}>{lastCheckOut}</Text>
-                        <Text style={styles.cardFooterSubtext}>{t.yesterday}</Text>
+                        <Text style={styles.cardFooterSubtext}>{t.timeYesterday}</Text>
                     </View>
                 </View>
-
-                {showBanner && dashboardState === 'weekly_off' && (
-                    <View style={[styles.infoBannerInlineAlertBox, { flexDirection: isRtl ? 'row-reverse' : 'row', backgroundColor: '#EFF8FF', borderColor: '#B2DDFF' }]}>
-                        <Ionicons name="calendar-outline" size={16} color="#175CD3" style={isRtl ? { marginLeft: 8 } : { marginRight: 8 }} />
-                        <Text style={[styles.infoBannerTextContent, { color: '#175CD3', textAlign: isRtl ? 'right' : 'left' }]}>{t.weeklyOffBanner}</Text>
-                    </View>
-                )}
 
                 <View style={styles.navigationGridPanelSection}>
                     <View style={[styles.gridActionInteractiveButtonsRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
@@ -255,7 +264,7 @@ export default function DashboardScreen({
                             <View style={[styles.actionIconCircleBadge, { backgroundColor: isCheckedIn ? '#F2F4F7' : '#E6F4F1' }]}>
                                 <Ionicons name="location" size={24} color={isCheckedIn ? '#98A2B3' : '#0B6655'} />
                             </View>
-                            <Text style={[styles.actionBtnLabelText, isCheckedIn && { color: '#98A2B3' }]}>{t.checkIn}</Text>
+                            <Text style={[styles.actionBtnLabelText, isCheckedIn && { color: '#98A2B3' }]}>{t.navCheckIn}</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
@@ -267,27 +276,27 @@ export default function DashboardScreen({
                             <View style={[styles.actionIconCircleBadge, { backgroundColor: !isCheckedIn ? '#F2F4F7' : '#FEF3F2' }]}>
                                 <Ionicons name="log-out" size={24} color={!isCheckedIn ? '#98A2B3' : '#D92D20'} />
                             </View>
-                            <Text style={[styles.actionBtnLabelText, !isCheckedIn && { color: '#98A2B3' }]}>{t.checkOut}</Text>
+                            <Text style={[styles.actionBtnLabelText, !isCheckedIn && { color: '#98A2B3' }]}>{t.navCheckOut}</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity style={styles.squareActionButtonCard} onPress={onNavigateToHourly}>
                             <View style={[styles.actionIconCircleBadge, { backgroundColor: '#F4F5F7' }]}><Ionicons name="time" size={24} color="#475467" /></View>
-                            <Text style={styles.actionBtnLabelText}>{t.hourly}</Text>
+                            <Text style={styles.actionBtnLabelText}>{t.navHourly}</Text>
                         </TouchableOpacity>
                     </View>
 
                     <View style={[styles.gridActionInteractiveButtonsRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                         <TouchableOpacity style={styles.squareActionButtonCard} onPress={onNavigateToAttendance}>
                             <View style={[styles.actionIconCircleBadge, { backgroundColor: '#EFF8FF' }]}><Ionicons name="calendar-outline" size={24} color="#175CD3" /></View>
-                            <Text style={styles.actionBtnLabelText}>{t.attendance}</Text>
+                            <Text style={styles.actionBtnLabelText}>{t.navAttendance}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.squareActionButtonCard} onPress={onNavigateToLeave}>
                             <View style={[styles.actionIconCircleBadge, { backgroundColor: '#FDF2FA' }]}><Ionicons name="document-text" size={24} color="#C11574" /></View>
-                            <Text style={styles.actionBtnLabelText}>{t.leaveReq}</Text>
+                            <Text style={styles.actionBtnLabelText}>{t.navLeaveReq}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.squareActionButtonCard} onPress={onNavigateToMyLeaveRequests}>
                             <View style={[styles.actionIconCircleBadge, { backgroundColor: '#F0F9FF' }]}><Ionicons name="list" size={24} color="#026AA2" /></View>
-                            <Text style={styles.actionBtnLabelText}>{t.myReq}</Text>
+                            <Text style={styles.actionBtnLabelText}>{t.navMyReq}</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -296,19 +305,31 @@ export default function DashboardScreen({
             <Modal animationType="fade" transparent={true} visible={isLangModalVisible} onRequestClose={() => setIsLangModalVisible(false)}>
                 <TouchableOpacity style={styles.modalOverlayDismissBackground} activeOpacity={1} onPress={() => setIsLangModalVisible(false)}>
                     <View style={styles.modalLanguageCardContainer}>
-                        <Text style={styles.modalLanguageCardHeadingTitle}>{t.selectLang}</Text>
-                        <TouchableOpacity style={[styles.langSelectRowOption, currentLang === 'en' && styles.activeLangOptionHighlight]} onPress={() => { setCurrentScreenLang('en'); setIsLangModalVisible(false); }}><Text style={styles.langSelectRowOptionText}>English</Text></TouchableOpacity>
-                        <TouchableOpacity style={[styles.langSelectRowOption, currentLang === 'ur' && styles.activeLangOptionHighlight]} onPress={() => { setCurrentScreenLang('ur'); setIsLangModalVisible(false); }}><Text style={styles.langSelectRowOptionText}>اردو (Urdu)</Text></TouchableOpacity>
-                        <TouchableOpacity style={[styles.langSelectRowOption, currentLang === 'ar' && styles.activeLangOptionHighlight]} onPress={() => { setCurrentScreenLang('ar'); setIsLangModalVisible(false); }}><Text style={styles.langSelectRowOptionText}>العربية (Arabic)</Text></TouchableOpacity>
+                        <Text style={styles.modalLanguageCardHeadingTitle}>{t.selectLangTitle || "Select Language"}</Text>
+                        <TouchableOpacity style={[styles.langSelectRowOption, currentLang === 'en' && styles.activeLangOptionHighlight]} onPress={() => handleLanguageChange('en')}><Text style={styles.langSelectRowOptionText}>English</Text></TouchableOpacity>
+                        <TouchableOpacity style={[styles.langSelectRowOption, currentLang === 'ur' && styles.activeLangOptionHighlight]} onPress={() => handleLanguageChange('ur')}><Text style={styles.langSelectRowOptionText}>اردو (Urdu)</Text></TouchableOpacity>
+                        <TouchableOpacity style={[styles.langSelectRowOption, currentLang === 'ar' && styles.activeLangOptionHighlight]} onPress={() => handleLanguageChange('ar')}><Text style={styles.langSelectRowOptionText}>العربية (Arabic)</Text></TouchableOpacity>
                     </View>
                 </TouchableOpacity>
             </Modal>
 
+            <Modal animationType="fade" transparent={true} visible={leaveAlertModal}>
+                <View style={styles.modalOverlayBlack}>
+                    <View style={styles.alertCardContent}>
+                        <View style={[styles.alertIconFrame, { backgroundColor: alertStatus === 'approved' ? '#ECFDF3' : '#FEF3F2' }]}>
+                            <Ionicons name={alertStatus === 'approved' ? 'checkmark-circle' : 'close-circle'} size={32} color={alertStatus === 'approved' ? '#027A48' : '#B42318'} />
+                        </View>
+                        <Text style={styles.alertTitleText}>{alertStatus === 'approved' ? t.leaveApprovedTitle : t.leaveRejectedTitle}</Text>
+                        <Text style={styles.alertBodyText}>{alertMessage}</Text>
+                    </View>
+                </View>
+            </Modal>
+
             <View style={[styles.bottomTabStickyNavBarContainer, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
-                <TouchableOpacity style={styles.tabBarItemActionLink} onPress={onNavigateHome}><Ionicons name="home" size={22} color="#0B6655" /><Text style={[styles.tabBarItemLabelText, { color: '#0B6655' }]}>{t.home}</Text></TouchableOpacity>
-                <TouchableOpacity style={styles.tabBarItemActionLink} onPress={onNavigateToAttendance}><Ionicons name="calendar" size={22} color="#98A2B3" /><Text style={styles.tabBarItemLabelText}>{t.attendance}</Text></TouchableOpacity>
-                <TouchableOpacity style={styles.tabBarItemActionLink} onPress={onNavigateToLeave}><Ionicons name="document-text" size={22} color="#98A2B3" /><Text style={styles.tabBarItemLabelText}>{t.leave}</Text></TouchableOpacity>
-                <TouchableOpacity style={styles.tabBarItemActionLink} onPress={onNavigateToProfile}><Ionicons name="person" size={22} color="#98A2B3" /><Text style={styles.tabBarItemLabelText}>{t.profile}</Text></TouchableOpacity>
+                <TouchableOpacity style={styles.tabBarItemActionLink} onPress={onNavigateHome}><Ionicons name="home" size={22} color="#0B6655" /><Text style={[styles.tabBarItemLabelText, { color: '#0B6655' }]}>{t.navHome}</Text></TouchableOpacity>
+                <TouchableOpacity style={styles.tabBarItemActionLink} onPress={onNavigateToAttendance}><Ionicons name="calendar" size={22} color="#98A2B3" /><Text style={styles.tabBarItemLabelText}>{t.navAttendance}</Text></TouchableOpacity>
+                <TouchableOpacity style={styles.tabBarItemActionLink} onPress={onNavigateToLeave}><Ionicons name="document-text" size={22} color="#98A2B3" /><Text style={styles.tabBarItemLabelText}>{t.navLeave}</Text></TouchableOpacity>
+                <TouchableOpacity style={styles.tabBarItemActionLink} onPress={onNavigateToProfile}><Ionicons name="person" size={22} color="#98A2B3" /><Text style={styles.tabBarItemLabelText}>{t.navProfile}</Text></TouchableOpacity>
             </View>
         </View>
     );
@@ -334,8 +355,6 @@ const styles = StyleSheet.create({
     cardSectionLabel: { fontSize: 12, color: '#667085', fontWeight: '500' },
     statusMainValueText: { fontSize: 17, fontWeight: '700', color: '#101828', marginTop: 4 },
     cardFooterSubtext: { fontSize: 11, color: '#98A2B3', marginTop: 4 },
-    infoBannerInlineAlertBox: { flexDirection: 'row', alignItems: 'center', borderRadius: 12, borderWidth: 1, padding: 14, marginHorizontal: 20, marginTop: 16, backgroundColor: '#EFF8FF', borderColor: '#B2DDFF' },
-    infoBannerTextContent: { fontSize: 12, fontWeight: '600', flex: 1, lineHeight: 16, color: '#0B6655' },
     navigationGridPanelSection: { paddingHorizontal: 16, marginTop: 22, flex: 1, justifyContent: 'flex-start' },
     gridActionInteractiveButtonsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14 },
     squareActionButtonCard: { width: '31%', backgroundColor: '#FFFFFF', borderRadius: 18, padding: 14, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#EEF0F2', height: 104, shadowColor: '#101828', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.02, shadowRadius: 6 },
@@ -350,5 +369,10 @@ const styles = StyleSheet.create({
     modalLanguageCardHeadingTitle: { fontSize: 16, fontWeight: '700', color: '#101828', marginBottom: 16, textAlign: 'center' },
     langSelectRowOption: { paddingVertical: 12, paddingHorizontal: 16, borderRadius: 8, marginBottom: 8, backgroundColor: '#F9FAFB' },
     activeLangOptionHighlight: { backgroundColor: '#E6F4F1', borderWidth: 1, borderColor: '#0B6655' },
-    langSelectRowOptionText: { fontSize: 14, fontWeight: '600', color: '#344054', textAlign: 'center' }
+    langSelectRowOptionText: { fontSize: 14, fontWeight: '600', color: '#344054', textAlign: 'center' },
+    modalOverlayBlack: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.75)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+    alertCardContent: { width: '100%', maxWidth: 320, backgroundColor: '#1A332C', borderRadius: 20, padding: 24, alignItems: 'center', borderWidth: 1, borderColor: '#2C4A42', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5 },
+    alertIconFrame: { width: 60, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
+    alertTitleText: { fontSize: 18, fontWeight: '800', color: '#FFFFFF', textAlign: 'center', marginBottom: 8 },
+    alertBodyText: { fontSize: 13, color: '#C8DDD7', textAlign: 'center', lineHeight: 18 }
 });

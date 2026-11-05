@@ -10,20 +10,33 @@ import {
     RefreshControl
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { translations, getGlobalLang, subscribeLang } from '../../../i18n';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // 📄 Dedicated Screen for Leave Request Details
 export function LeaveRequestDetailsScreen({ record, onBack }) {
+    const [currentLang, setCurrentLang] = useState(getGlobalLang());
+
+    useEffect(() => {
+        const unsubscribe = subscribeLang((newLang) => {
+            setCurrentLang(newLang);
+        });
+        return () => unsubscribe();
+    }, []);
+
+    const t = translations[currentLang];
+    const isRtl = currentLang === 'ur' || currentLang === 'ar';
+
     if (!record) return null;
 
     return (
-        <View style={styles.mainWrapper}>
-            <View style={styles.navTopHeaderBar}>
+        <View style={[styles.mainWrapper, { direction: isRtl ? 'rtl' : 'ltr' }]}>
+            <View style={[styles.navTopHeaderBar, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                 <TouchableOpacity onPress={onBack} style={styles.headerBackArrowLink}>
-                    <Ionicons name="chevron-back" size={20} color="#344054" />
+                    <Ionicons name={isRtl ? "chevron-forward" : "chevron-back"} size={20} color="#344054" />
                 </TouchableOpacity>
-                <Text style={styles.navBarHeadingCenterTitle}>Request details</Text>
+                <Text style={styles.navBarHeadingCenterTitle}>{t.requestDetailsTitle}</Text>
                 <View style={styles.headerRightBoxSpace} />
             </View>
 
@@ -32,59 +45,59 @@ export function LeaveRequestDetailsScreen({ record, onBack }) {
                 showsVerticalScrollIndicator={true}
             >
                 <View style={styles.detailsMainWhiteBlockContainerCard}>
-                    <View style={styles.listItemFloatingCardHeaderLineRow}>
+                    <View style={[styles.listItemFloatingCardHeaderLineRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                         <Text style={styles.detailsMainBlockCardHeaderTitle}>{record.type}</Text>
                         <View style={[styles.listItemStatusCapsuleBadge, { backgroundColor: record.bg }]}>
                             <Text style={[styles.listItemStatusCapsuleBadgeText, { color: record.color }]}>{record.status}</Text>
                         </View>
                     </View>
-                    <Text style={styles.detailsMainBlockCardCodeMetaString}>{record.code}</Text>
+                    <Text style={[styles.detailsMainBlockCardCodeMetaString, { textAlign: isRtl ? 'right' : 'left' }]}>{record.code}</Text>
 
-                    <View style={styles.detailsMatrixDataGridRow}><Text style={styles.detailsMatrixGridLabel}>Dates</Text><Text style={styles.detailsMatrixGridValue}>{record.dates}</Text></View>
-                    <View style={styles.detailsMatrixDataGridRow}><Text style={styles.detailsMatrixGridLabel}>Total days</Text><Text style={styles.detailsMatrixGridValue}>{record.totalDays}</Text></View>
-                    <View style={styles.detailsMatrixDataGridRow}><Text style={styles.detailsMatrixGridLabel}>Applied on</Text><Text style={styles.detailsMatrixGridValue}>{record.appliedOn}</Text></View>
-                    <View style={styles.detailsMatrixDataGridRow}><Text style={styles.detailsMatrixGridLabel}>Reason</Text><Text style={styles.detailsMatrixGridValue}>{record.reason}</Text></View>
-                    <View style={styles.detailsMatrixDataGridRow}><Text style={styles.detailsMatrixGridLabel}>Attachment</Text><Text style={styles.detailsMatrixGridValue}>—</Text></View>
+                    <View style={[styles.detailsMatrixDataGridRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}><Text style={[styles.detailsMatrixGridLabel, { textAlign: isRtl ? 'right' : 'left' }]}>{t.datesLabel}</Text><Text style={[styles.detailsMatrixGridValue, { textAlign: isRtl ? 'right' : 'left' }]}>{record.dates}</Text></View>
+                    <View style={[styles.detailsMatrixDataGridRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}><Text style={[styles.detailsMatrixGridLabel, { textAlign: isRtl ? 'right' : 'left' }]}>{t.totalDaysLabel}</Text><Text style={[styles.detailsMatrixGridValue, { textAlign: isRtl ? 'right' : 'left' }]}>{record.totalDays}</Text></View>
+                    <View style={[styles.detailsMatrixDataGridRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}><Text style={[styles.detailsMatrixGridLabel, { textAlign: isRtl ? 'right' : 'left' }]}>{t.appliedOnLabel}</Text><Text style={[styles.detailsMatrixGridValue, { textAlign: isRtl ? 'right' : 'left' }]}>{record.appliedOn}</Text></View>
+                    <View style={[styles.detailsMatrixDataGridRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}><Text style={[styles.detailsMatrixGridLabel, { textAlign: isRtl ? 'right' : 'left' }]}>{t.reasonLabel}</Text><Text style={[styles.detailsMatrixGridValue, { textAlign: isRtl ? 'right' : 'left' }]}>{record.reason}</Text></View>
+                    <View style={[styles.detailsMatrixDataGridRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}><Text style={[styles.detailsMatrixGridLabel, { textAlign: isRtl ? 'right' : 'left' }]}>{t.attachmentLabel}</Text><Text style={[styles.detailsMatrixGridValue, { textAlign: isRtl ? 'right' : 'left' }]}>—</Text></View>
                 </View>
 
                 {record.status === 'Rejected' && record.mgrComment && (
-                    <View style={styles.inlineCommentAlertCardBoxRedContainer}>
-                        <Ionicons name="information-circle" size={16} color="#B42318" style={{ marginRight: 8, marginTop: 1 }} />
-                        <Text style={styles.inlineCommentAlertCardBoxRedText}>
-                            <Text style={{ fontWeight: '700' }}>Manager Note:</Text> {record.mgrComment}
+                    <View style={[styles.inlineCommentAlertCardBoxRedContainer, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                        <Ionicons name="information-circle" size={16} color="#B42318" style={[isRtl ? { marginLeft: 8 } : { marginRight: 8 }, { marginTop: 1 }]} />
+                        <Text style={[styles.inlineCommentAlertCardBoxRedText, { textAlign: isRtl ? 'right' : 'left' }]}>
+                            <Text style={{ fontWeight: '700' }}>{t.managerNoteLabel}</Text> {record.mgrComment}
                         </Text>
                     </View>
                 )}
 
-                <Text style={styles.approvalHistoryTreeHeaderLabelSection}>APPROVAL HISTORY</Text>
+                <Text style={[styles.approvalHistoryTreeHeaderLabelSection, { textAlign: isRtl ? 'right' : 'left' }]}>{t.approvalHistoryHeader}</Text>
 
                 <View style={styles.verticalTimelineOuterFrameContainer}>
-                    <View style={styles.timelineRowItemNode}>
-                        <View style={[styles.timelineStatusMarkerCircleNode, { backgroundColor: '#027A48' }]} />
-                        <View style={styles.timelineVerticalConnectingTrackBarLine} />
-                        <View style={styles.timelineDetailsTextContentBlockBox}>
-                            <Text style={styles.timelineDetailsNodeTitleHeader}>Submitted</Text>
-                            <Text style={styles.timelineDetailsNodeMetaSubText}>Employee · {record.subTime || record.appliedOn}</Text>
+                    <View style={[styles.timelineRowItemNode, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                        <View style={[styles.timelineStatusMarkerCircleNode, { backgroundColor: '#027A48', [isRtl ? 'right' : 'left']: 0 }]} />
+                        <View style={[styles.timelineVerticalConnectingTrackBarLine, isRtl ? { right: 4, left: 'auto' } : { left: 4, right: 'auto' }]} />
+                        <View style={[styles.timelineDetailsTextContentBlockBox, { [isRtl ? 'paddingRight' : 'paddingLeft']: 24, [isRtl ? 'paddingLeft' : 'paddingRight']: 0, alignItems: isRtl ? 'flex-end' : 'flex-start' }]}>
+                            <Text style={[styles.timelineDetailsNodeTitleHeader, { textAlign: isRtl ? 'right' : 'left' }]}>{t.timelineSubmitted}</Text>
+                            <Text style={[styles.timelineDetailsNodeMetaSubText, { textAlign: isRtl ? 'right' : 'left' }]}>{t.timelineSubmittedSub('Employee', record.subTime || record.appliedOn)}</Text>
                         </View>
                     </View>
 
-                    <View style={styles.timelineRowItemNode}>
-                        <View style={[styles.timelineStatusMarkerCircleNode, { backgroundColor: record.status === 'Rejected' ? '#B42318' : record.status === 'Approved' ? '#027A48' : '#B24E00' }]} />
-                        <View style={styles.timelineVerticalConnectingTrackBarLine} />
-                        <View style={styles.timelineDetailsTextContentBlockBox}>
-                            <Text style={styles.timelineDetailsNodeTitleHeader}>
-                                {record.status === 'Rejected' ? 'Rejected by Manager' : record.status === 'Approved' ? 'Approved by Manager' : 'Pending Manager Review'}
+                    <View style={[styles.timelineRowItemNode, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                        <View style={[styles.timelineStatusMarkerCircleNode, { backgroundColor: record.status === 'Rejected' ? '#B42318' : record.status === 'Approved' ? '#027A48' : '#B24E00', [isRtl ? 'right' : 'left']: 0 }]} />
+                        <View style={[styles.timelineVerticalConnectingTrackBarLine, isRtl ? { right: 4, left: 'auto' } : { left: 4, right: 'auto' }]} />
+                        <View style={[styles.timelineDetailsTextContentBlockBox, { [isRtl ? 'paddingRight' : 'paddingLeft']: 24, [isRtl ? 'paddingLeft' : 'paddingRight']: 0, alignItems: isRtl ? 'flex-end' : 'flex-start' }]}>
+                            <Text style={[styles.timelineDetailsNodeTitleHeader, { textAlign: isRtl ? 'right' : 'left' }]}>
+                                {record.status === 'Rejected' ? t.timelineRejectedManager : record.status === 'Approved' ? t.timelineApprovedManager : t.timelinePendingReview}
                             </Text>
-                            <Text style={styles.timelineDetailsNodeMetaSubText}>Management Status</Text>
+                            <Text style={[styles.timelineDetailsNodeMetaSubText, { textAlign: isRtl ? 'right' : 'left' }]}>{t.timelineManagementStatus}</Text>
                         </View>
                     </View>
 
-                    <View style={[styles.timelineRowItemNode, { paddingBottom: 0 }]}>
-                        <View style={[styles.timelineStatusMarkerCircleNode, { backgroundColor: record.status === 'Approved' ? '#027A48' : '#EAECF0' }]} />
-                        <View style={styles.timelineDetailsTextContentBlockBox}>
-                            <Text style={styles.timelineDetailsNodeTitleHeader}>HR Recorded</Text>
-                            <Text style={styles.timelineDetailsNodeMetaSubText}>
-                                {record.status === 'Approved' ? 'System HR · Recorded' : 'Waiting for approval'}
+                    <View style={[styles.timelineRowItemNode, { flexDirection: isRtl ? 'row-reverse' : 'row', paddingBottom: 0 }]}>
+                        <View style={[styles.timelineStatusMarkerCircleNode, { backgroundColor: record.status === 'Approved' ? '#027A48' : '#EAECF0', [isRtl ? 'right' : 'left']: 0 }]} />
+                        <View style={[styles.timelineDetailsTextContentBlockBox, { [isRtl ? 'paddingRight' : 'paddingLeft']: 24, [isRtl ? 'paddingLeft' : 'paddingRight']: 0, alignItems: isRtl ? 'flex-end' : 'flex-start' }]}>
+                            <Text style={[styles.timelineDetailsNodeTitleHeader, { textAlign: isRtl ? 'right' : 'left' }]}>{t.timelineHrRecorded}</Text>
+                            <Text style={[styles.timelineDetailsNodeMetaSubText, { textAlign: isRtl ? 'right' : 'left' }]}>
+                                {record.status === 'Approved' ? t.timelineHrSuccess : t.timelineHrWaiting}
                             </Text>
                         </View>
                     </View>
@@ -100,11 +113,22 @@ export default function MyLeaveRequestsScreen({
     serverAddress = 'http://192.168.100.199:8081',
     onNavigateToApply 
 }) {
+    const [currentLang, setCurrentLang] = useState(getGlobalLang());
     const [activeFilter, setActiveFilter] = useState('all'); 
     const [selectedRequest, setSelectedRequest] = useState(null);
     const [requestsList, setRequestsList] = useState([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+
+    useEffect(() => {
+        const unsubscribe = subscribeLang((newLang) => {
+            setCurrentLang(newLang);
+        });
+        return () => unsubscribe();
+    }, []);
+
+    const t = translations[currentLang];
+    const isRtl = currentLang === 'ur' || currentLang === 'ar';
 
     useEffect(() => {
         fetchLeaveRequests();
@@ -127,7 +151,6 @@ export default function MyLeaveRequestsScreen({
         }
     };
 
-    // 🟢 Manage Leave Action (Approve / Reject) for Testing
     const handleManageLeave = async (requestId, actionType) => {
         try {
             const cleanBaseUrl = serverAddress.replace(/\/+$/, '');
@@ -136,21 +159,21 @@ export default function MyLeaveRequestsScreen({
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     requestId: requestId,
-                    action: actionType, // 'approve' or 'reject'
+                    action: actionType,
                     managerComment: actionType === 'approve' ? 'Approved by manager test' : 'Rejected by manager test'
                 })
             });
 
             const json = await response.json();
             if (json.success) {
-                alert(`✅ Leave request successfully ${actionType}d!`);
-                fetchLeaveRequests(); // Refresh list
+                alert(t.leaveActionSuccess(actionType));
+                fetchLeaveRequests();
             } else {
-                alert("❌ Error: " + json.message);
+                alert(t.leaveActionError + json.message);
             }
         } catch (err) {
             console.log("Action error:", err);
-            alert("Network error during action.");
+            alert(t.networkActionError);
         }
     };
 
@@ -170,25 +193,45 @@ export default function MyLeaveRequestsScreen({
     }
 
     return (
-        <View style={styles.mainWrapper}>
-            <View style={styles.navTopHeaderBar}>
-                <TouchableOpacity onPress={onBack} style={styles.headerBackArrowLink}><Ionicons name="chevron-back" size={20} color="#344054" /></TouchableOpacity>
-                <Text style={styles.navBarHeadingCenterTitle}>My leave requests</Text>
-                <TouchableOpacity style={styles.headerRightAddButton} onPress={onNavigateToApply}><Ionicons name="add" size={22} color="#344054" /></TouchableOpacity>
+        <View style={[styles.mainWrapper, { direction: isRtl ? 'rtl' : 'ltr' }]}>
+            <View style={[styles.navTopHeaderBar, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                <TouchableOpacity onPress={onBack} style={styles.headerBackArrowLink}>
+                    <Ionicons name={isRtl ? "chevron-forward" : "chevron-back"} size={20} color="#344054" />
+                </TouchableOpacity>
+                <Text style={styles.navBarHeadingCenterTitle}>{t.myLeaveRequestsTitle}</Text>
+                <TouchableOpacity style={styles.headerRightAddButton} onPress={onNavigateToApply}>
+                    <Ionicons name="add" size={22} color="#344054" />
+                </TouchableOpacity>
             </View>
 
             <View style={styles.horizontalFilterScrollWrapper}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, alignItems: 'center', height: 44 }}>
-                    <TouchableOpacity style={[styles.filterBadgeCapsule, activeFilter === 'all' && styles.filterBadgeCapsuleActive]} onPress={() => setActiveFilter('all')}><Text style={[styles.filterBadgeCapsuleText, activeFilter === 'all' && styles.filterBadgeCapsuleTextActive]}>All &nbsp;<Text style={styles.badgeCountMutedStyle}>{requestsList.length}</Text></Text></TouchableOpacity>
-                    <TouchableOpacity style={[styles.filterBadgeCapsule, activeFilter === 'pending' && styles.filterBadgeCapsuleActive]} onPress={() => setActiveFilter('pending')}><Text style={[styles.filterBadgeCapsuleText, activeFilter === 'pending' && styles.filterBadgeCapsuleTextActive]}>Pending &nbsp;<Text style={styles.badgeCountMutedStyle}>{pendingCount}</Text></Text></TouchableOpacity>
-                    <TouchableOpacity style={[styles.filterBadgeCapsule, activeFilter === 'approved' && styles.filterBadgeCapsuleActive]} onPress={() => setActiveFilter('approved')}><Text style={[styles.filterBadgeCapsuleText, activeFilter === 'approved' && styles.filterBadgeCapsuleTextActive]}>Approved &nbsp;<Text style={styles.badgeCountMutedStyle}>{approvedCount}</Text></Text></TouchableOpacity>
-                    <TouchableOpacity style={[styles.filterBadgeCapsule, activeFilter === 'rejected' && styles.filterBadgeCapsuleActive]} onPress={() => setActiveFilter('rejected')}><Text style={[styles.filterBadgeCapsuleText, activeFilter === 'rejected' && styles.filterBadgeCapsuleTextActive]}>Rejected &nbsp;<Text style={styles.badgeCountMutedStyle}>{rejectedCount}</Text></Text></TouchableOpacity>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, alignItems: 'center', height: 44, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
+                    <TouchableOpacity style={[styles.filterBadgeCapsule, activeFilter === 'all' && styles.filterBadgeCapsuleActive]} onPress={() => setActiveFilter('all')}>
+                        <Text style={[styles.filterBadgeCapsuleText, activeFilter === 'all' && styles.filterBadgeCapsuleTextActive]}>
+                            {t.filterAll} &nbsp;<Text style={styles.badgeCountMutedStyle}>{requestsList.length}</Text>
+                        </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.filterBadgeCapsule, activeFilter === 'pending' && styles.filterBadgeCapsuleActive]} onPress={() => setActiveFilter('pending')}>
+                        <Text style={[styles.filterBadgeCapsuleText, activeFilter === 'pending' && styles.filterBadgeCapsuleTextActive]}>
+                            {t.filterPending} &nbsp;<Text style={styles.badgeCountMutedStyle}>{pendingCount}</Text>
+                        </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.filterBadgeCapsule, activeFilter === 'approved' && styles.filterBadgeCapsuleActive]} onPress={() => setActiveFilter('approved')}>
+                        <Text style={[styles.filterBadgeCapsuleText, activeFilter === 'approved' && styles.filterBadgeCapsuleTextActive]}>
+                            {t.filterApproved} &nbsp;<Text style={styles.badgeCountMutedStyle}>{approvedCount}</Text>
+                        </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.filterBadgeCapsule, activeFilter === 'rejected' && styles.filterBadgeCapsuleActive]} onPress={() => setActiveFilter('rejected')}>
+                        <Text style={[styles.filterBadgeCapsuleText, activeFilter === 'rejected' && styles.filterBadgeCapsuleTextActive]}>
+                            {t.filterRejected} &nbsp;<Text style={styles.badgeCountMutedStyle}>{rejectedCount}</Text>
+                        </Text>
+                    </TouchableOpacity>
                 </ScrollView>
             </View>
 
-            <View style={styles.updatedTimeBannerStripBar}>
-                <Ionicons name="refresh-outline" size={14} color="#667085" style={{ marginRight: 6 }} />
-                <Text style={styles.updatedTimeBannerStripBarText}>Pull down to refresh requests</Text>
+            <View style={[styles.updatedTimeBannerStripBar, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                <Ionicons name="refresh-outline" size={14} color="#667085" style={[isRtl ? { marginLeft: 6 } : { marginRight: 6 }]} />
+                <Text style={[styles.updatedTimeBannerStripBarText, { textAlign: isRtl ? 'right' : 'left' }]}>{t.pullToRefreshText}</Text>
             </View>
 
             {loading ? (
@@ -196,9 +239,11 @@ export default function MyLeaveRequestsScreen({
             ) : filteredRequestsList.length === 0 ? (
                 <View style={styles.centerFeedbackScreenContainer}>
                     <View style={styles.centerFeedbackIconOuterCircle}><Ionicons name="document-text-outline" size={24} color="#0B6655" /></View>
-                    <Text style={styles.centerFeedbackHeadingTitleText}>No leave requests yet</Text>
-                    <Text style={styles.centerFeedbackParagraphSubText}>Requests you send appear here with their status.</Text>
-                    <TouchableOpacity style={styles.primaryActionButtonNodeFixedInline} onPress={onNavigateToApply}><Text style={styles.primaryActionButtonTextLabel}>+ Apply Leave</Text></TouchableOpacity>
+                    <Text style={[styles.centerFeedbackHeadingTitleText, { textAlign: isRtl ? 'right' : 'center' }]}>{t.noLeaveRequestsTitle}</Text>
+                    <Text style={[styles.centerFeedbackParagraphSubText, { textAlign: isRtl ? 'right' : 'center' }]}>{t.noLeaveRequestsSubtitle}</Text>
+                    <TouchableOpacity style={styles.primaryActionButtonNodeFixedInline} onPress={onNavigateToApply}>
+                        <Text style={styles.primaryActionButtonTextLabel}>{t.applyLeaveBtnText}</Text>
+                    </TouchableOpacity>
                 </View>
             ) : (
                 <ScrollView 
@@ -208,31 +253,34 @@ export default function MyLeaveRequestsScreen({
                 >
                     {filteredRequestsList.map((item) => (
                         <TouchableOpacity key={item.id} style={styles.leaveRequestListItemFloatingCard} activeOpacity={0.9} onPress={() => setSelectedRequest(item)}>
-                            <View style={styles.listItemFloatingCardHeaderLineRow}>
-                                <Text style={styles.leaveRequestListItemTitleHeader}>{item.type}</Text>
-                                <View style={[styles.listItemStatusCapsuleBadge, { backgroundColor: item.bg }]}><Text style={[styles.listItemStatusCapsuleBadgeText, { color: item.color }]}>{item.status}</Text></View>
+                            <View style={[styles.listItemFloatingCardHeaderLineRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                                <Text style={[styles.leaveRequestListItemTitleHeader, { textAlign: isRtl ? 'right' : 'left' }]}>{item.type}</Text>
+                                <View style={[styles.listItemStatusCapsuleBadge, { backgroundColor: item.bg }]}>
+                                    <Text style={[styles.listItemStatusCapsuleBadgeText, { color: item.color }]}>{item.status}</Text>
+                                </View>
                             </View>
-                            <Text style={styles.listItemFloatingCardDateDurationString}>{item.dates}</Text>
-                            <View style={styles.listItemFloatingCardFooterLineRow}>
-                                <Text style={styles.listItemFloatingCardAppliedDateMetaText}>Applied on: {item.appliedOn}</Text>
-                                <Text style={styles.listItemFloatingCardTotalDaysDurationText}>{item.totalDays} {item.totalDays === 1 ? 'day' : 'days'}</Text>
-                                <Ionicons name="chevron-forward" size={14} color="#D0D5DD" style={{ marginLeft: 4 }} />
+                            <Text style={[styles.listItemFloatingCardDateDurationString, { textAlign: isRtl ? 'right' : 'left' }]}>{item.dates}</Text>
+                            <View style={[styles.listItemFloatingCardFooterLineRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                                <Text style={[styles.listItemFloatingCardAppliedDateMetaText, { textAlign: isRtl ? 'right' : 'left' }]}>Applied on: {item.appliedOn}</Text>
+                                <View style={{ flexDirection: isRtl ? 'row-reverse' : 'row', alignItems: 'center' }}>
+                                    <Text style={[styles.listItemFloatingCardTotalDaysDurationText, { textAlign: isRtl ? 'right' : 'left' }]}>{item.totalDays} {item.totalDays === 1 ? t.dayUnitSingular : t.dayUnitPlural}</Text>
+                                    <Ionicons name={isRtl ? "chevron-back" : "chevron-forward"} size={14} color="#D0D5DD" style={[isRtl ? { marginRight: 4 } : { marginLeft: 4 }]} />
+                                </View>
                             </View>
 
-                            {/* 🛠️ Admin Action Buttons for Pending Requests */}
                             {item.status === 'Pending' && (
-                                <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 12, borderTopWidth: 1, borderColor: '#F2F4F7', paddingTop: 10 }}>
+                                <View style={[styles.adminActionRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                                     <TouchableOpacity 
-                                        style={{ backgroundColor: '#FEE4E2', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, marginRight: 8 }}
+                                        style={[styles.adminRejectBtn, isRtl ? { marginLeft: 8, marginRight: 0 } : { marginRight: 8, marginLeft: 0 }]}
                                         onPress={(e) => { e.stopPropagation(); handleManageLeave(item.id, 'reject'); }}
                                     >
-                                        <Text style={{ color: '#B42318', fontSize: 12, fontWeight: '700' }}>Reject</Text>
+                                        <Text style={styles.adminRejectText}>{t.rejectBtnText}</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity 
-                                        style={{ backgroundColor: '#ECFDF3', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 }}
+                                        style={styles.adminApproveBtn}
                                         onPress={(e) => { e.stopPropagation(); handleManageLeave(item.id, 'approve'); }}
                                     >
-                                        <Text style={{ color: '#027A48', fontSize: 12, fontWeight: '700' }}>Approve</Text>
+                                        <Text style={styles.adminApproveText}>{t.approveBtnText}</Text>
                                     </TouchableOpacity>
                                 </View>
                             )}
@@ -269,21 +317,21 @@ const styles = StyleSheet.create({
     listItemFloatingCardDateDurationString: { fontSize: 13, color: '#475467', fontWeight: '500', marginTop: 4 },
     listItemFloatingCardFooterLineRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, borderTopWidth: 1, borderColor: '#F2F4F7', paddingTop: 10 },
     listItemFloatingCardAppliedDateMetaText: { fontSize: 11, color: '#98A2B3', fontWeight: '500' },
-    listItemFloatingCardTotalDaysDurationText: { fontSize: 13, fontWeight: '700', color: '#344054', flex: 1, textAlign: 'right' },
+    listItemFloatingCardTotalDaysDurationText: { fontSize: 13, fontWeight: '700', color: '#344054' },
     detailsMainWhiteBlockContainerCard: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#EEF0F2', width: '100%' },
     detailsMainBlockCardHeaderTitle: { fontSize: 16, fontWeight: '700', color: '#101828' },
     detailsMainBlockCardCodeMetaString: { fontSize: 12, color: '#98A2B3', fontWeight: '500', marginTop: 2, marginBottom: 12 },
     detailsMatrixDataGridRow: { flexDirection: 'row', paddingVertical: 6, width: '100%' },
     detailsMatrixGridLabel: { fontSize: 13, color: '#667085', fontWeight: '500', width: 90 },
     detailsMatrixGridValue: { fontSize: 13, color: '#101828', fontWeight: '600', flex: 1 },
-    inlineCommentAlertCardBoxRedContainer: { flexDirection: 'row', backgroundColor: '#FEF3F2', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#FECDCA', marginTop: 14, width: '100%' },
+    inlineCommentAlertCardBoxRedContainer: { flexDirection: 'row', backgroundColor: '#FEF3F2', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#FECDCA', marginTop: 14, width: '100%', alignItems: 'center' },
     inlineCommentAlertCardBoxRedText: { color: '#B42318', fontSize: 12, fontWeight: '500', lineHeight: 16, flex: 1 },
     approvalHistoryTreeHeaderLabelSection: { fontSize: 11, fontWeight: '700', color: '#667085', letterSpacing: 0.5, marginTop: 20, marginBottom: 10, paddingLeft: 2 },
     verticalTimelineOuterFrameContainer: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#EEF0F2', width: '100%' },
     timelineRowItemNode: { flexDirection: 'row', position: 'relative', paddingBottom: 24, width: '100%' },
-    timelineStatusMarkerCircleNode: { width: 10, height: 10, borderRadius: 5, marginTop: 4, zIndex: 10, position: 'absolute', left: 0 },
-    timelineVerticalConnectingTrackBarLine: { position: 'absolute', left: 4, top: 12, bottom: -4, width: 1, backgroundColor: '#EAECF0', zIndex: 1 },
-    timelineDetailsTextContentBlockBox: { flex: 1, paddingLeft: 24 },
+    timelineStatusMarkerCircleNode: { width: 10, height: 10, borderRadius: 5, marginTop: 4, zIndex: 10, position: 'absolute' },
+    timelineVerticalConnectingTrackBarLine: { position: 'absolute', top: 12, bottom: -4, width: 1, backgroundColor: '#EAECF0', zIndex: 1 },
+    timelineDetailsTextContentBlockBox: { flex: 1 },
     timelineDetailsNodeTitleHeader: { fontSize: 14, fontWeight: '700', color: '#101828' },
     timelineDetailsNodeMetaSubText: { fontSize: 11, color: '#667085', marginTop: 3, fontWeight: '500' },
     centerFeedbackScreenContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24, height: SCREEN_HEIGHT - 180 },
@@ -292,4 +340,9 @@ const styles = StyleSheet.create({
     centerFeedbackParagraphSubText: { fontSize: 13, color: '#667085', marginTop: 4, textAlign: 'center', fontWeight: '500', lineHeight: 18 },
     primaryActionButtonNodeFixedInline: { backgroundColor: '#0B6655', borderRadius: 12, height: 46, justifyContent: 'center', alignItems: 'center', width: '100%', marginTop: 24 },
     primaryActionButtonTextLabel: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
+    adminActionRow: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 12, borderTopWidth: 1, borderColor: '#F2F4F7', paddingTop: 10 },
+    adminRejectBtn: { backgroundColor: '#FEE4E2', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
+    adminRejectText: { color: '#B42318', fontSize: 12, fontWeight: '700' },
+    adminApproveBtn: { backgroundColor: '#ECFDF3', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
+    adminApproveText: { color: '#027A48', fontSize: 12, fontWeight: '700' }
 });

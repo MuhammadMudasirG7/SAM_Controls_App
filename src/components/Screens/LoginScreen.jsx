@@ -15,6 +15,7 @@ import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
 import LoginInput from '../login/LoginInput';
 import LoginAlert from '../login/LoginAlert';
+import { translations, getGlobalLang, subscribeLang } from '../../../i18n';
 
 export default function LoginScreen({ 
   loginState, 
@@ -24,11 +25,22 @@ export default function LoginScreen({
   onNavigateToSettings,
   serverAddress
 }) {
+  const [currentLang, setCurrentLang] = useState(getGlobalLang());
   const [showPassword, setShowPassword] = useState(false);
   const [employeeId, setEmployeeId] = useState('');
   const [password, setPassword] = useState('');
   const [attempts, setAttempts] = useState(0);
   const [isBiometricEnrolled, setIsBiometricEnrolled] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = subscribeLang((newLang) => {
+      setCurrentLang(newLang);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const t = translations[currentLang];
+  const isRtl = currentLang === 'ur' || currentLang === 'ar';
 
   useEffect(() => {
     checkBiometricStatus();
@@ -56,13 +68,12 @@ export default function LoginScreen({
     if (loginState === 'locked_out') return;
 
     if (!employeeId || !password) {
-      alert("Please enter both Employee ID and Password.");
+      alert(t.loginAlertEmpty);
       return;
     }
 
     if (setLoginErrorState) setLoginErrorState('default');
 
-    // 🛠️ Hardcoded Admin Login Bypass Check
     const trimmedEmpId = employeeId.trim();
     if (
       (trimmedEmpId.toUpperCase() === 'ADMIN-01' || trimmedEmpId.toLowerCase() === 'admin') && 
@@ -73,14 +84,13 @@ export default function LoginScreen({
         employeeId: 'ADMIN-01',
         name: 'System Admin',
         email: 'admin@samcontrols.com',
-        role: 'admin' // Triggers admin dashboard routing in App.js
+        role: 'admin'
       };
       await SecureStore.setItemAsync('saved_employee_id', trimmedEmpId);
       if (onLoginSuccess) onLoginSuccess(adminPayload);
       return;
     }
 
-    // Normal Backend API Login Flow
     try {
       const cleanBaseUrl = serverAddress || 'http://192.168.100.199:8081';
       const response = await fetch(`${cleanBaseUrl}/api/auth/login`, {
@@ -126,7 +136,7 @@ export default function LoginScreen({
     try {
       const savedEmpId = await SecureStore.getItemAsync('saved_employee_id');
       const result = await LocalAuthentication.authenticateAsync({
-        promptMessage: `Unlock SAM Controls for ${savedEmpId || 'Employee'}`,
+        promptMessage: t.biometricPrompt(savedEmpId),
         disableDeviceFallback: true,
       });
 
@@ -136,13 +146,13 @@ export default function LoginScreen({
         if (onLoginSuccess) onLoginSuccess();
       }
     } catch (error) {
-      alert("Secure authentication access failure.");
+      alert(t.biometricErrorAlert);
     }
   };
 
   return (
     <KeyboardAvoidingView 
-      style={styles.mainWrapper} 
+      style={[styles.mainWrapper, { direction: isRtl ? 'rtl' : 'ltr' }]} 
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -152,21 +162,21 @@ export default function LoginScreen({
             <Text style={styles.subLogoText}>CONTROLS</Text>
           </View>
 
-          <View style={styles.welcomeSection}>
-            <Text style={styles.welcomeTitle}>Welcome back</Text>
-            <Text style={styles.welcomeSubtitle}>Log in to record attendance</Text>
+          <View style={[styles.welcomeSection, { alignItems: isRtl ? 'flex-end' : 'center' }]}>
+            <Text style={[styles.welcomeTitle, { textAlign: isRtl ? 'right' : 'center' }]}>{t.welcomeBackTitle}</Text>
+            <Text style={[styles.welcomeSubtitle, { textAlign: isRtl ? 'right' : 'center' }]}>{t.welcomeBackSubtitle}</Text>
           </View>
 
           {loginState === 'password_wrong' && (
-            <LoginAlert message={`Employee ID or password is incorrect. (Attempts: ${attempts}/3)`} />
+            <LoginAlert message={t.loginAlertIncorrect(attempts)} />
           )}
           {loginState === 'locked_out' && (
-            <LoginAlert type="lock" message="Too many attempts. Ask HR to unlock your account or reset your password." />
+            <LoginAlert type="lock" message={t.loginAlertLocked} />
           )}
 
           <View style={styles.formContainer}>
             <LoginInput 
-              label="Employee ID"
+              label={t.employeeIdLabel || "Employee ID"}
               iconName="user"
               placeholder="EMP-10482"
               value={employeeId}
@@ -176,9 +186,9 @@ export default function LoginScreen({
             />
 
             <LoginInput 
-              label="Password"
+              label={t.passwordLabel}
               iconName="lock"
-              placeholder={loginState === 'default' ? '••••••••' : 'Enter password'}
+              placeholder={loginState === 'default' ? '••••••••' : t.passwordPlaceholder}
               secureTextEntry={!showPassword}
               value={password}
               onChangeText={(text) => setPassword(text)}
@@ -190,16 +200,16 @@ export default function LoginScreen({
               </TouchableOpacity>
             </LoginInput>
 
-            <View style={styles.controlsRow}>
-              <TouchableOpacity style={styles.checkboxContainer}>
-                <View style={styles.checkboxChecked}>
+            <View style={[styles.controlsRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+              <TouchableOpacity style={[styles.checkboxContainer, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                <View style={[styles.checkboxChecked, isRtl ? { marginLeft: 8, marginRight: 0 } : { marginRight: 8, marginLeft: 0 }]}>
                   <Ionicons name="checkmark" size={12} color="#FFFFFF" />
                 </View>
-                <Text style={styles.checkboxLabel}>Remember me</Text>
+                <Text style={styles.checkboxLabel}>{t.rememberMe}</Text>
               </TouchableOpacity>
               
               <TouchableOpacity onPress={onNavigateToForgot}>
-                <Text style={styles.forgotPasswordText}>Forgot password?</Text>
+                <Text style={styles.forgotPasswordText}>{t.forgotPassTitle || "Forgot password?"}</Text>
               </TouchableOpacity>
             </View>
 
@@ -208,35 +218,35 @@ export default function LoginScreen({
               disabled={loginState === 'locked_out'}
               onPress={handleLoginSubmit}
             >
-              <Text style={styles.loginButtonText}>Log in</Text>
+              <Text style={styles.loginButtonText}>{t.loginBtn}</Text>
             </TouchableOpacity>
           </View>
 
           {isBiometricEnrolled && (
             <View style={styles.biometricContainer}>
-              <View style={styles.dividerRow}>
+              <View style={[styles.dividerRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                 <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>or</Text>
+                <Text style={styles.dividerText}>{t.orDivider}</Text>
                 <View style={styles.dividerLine} />
               </View>
               
-              <TouchableOpacity style={styles.secureLoginButton} onPress={handleSecureLoginBypass}>
-                <Ionicons name="finger-print-outline" size={20} color="#0B6655" style={{ marginRight: 8 }} />
-                <Text style={styles.secureLoginText}>Secure Login</Text>
+              <TouchableOpacity style={[styles.secureLoginButton, { flexDirection: isRtl ? 'row-reverse' : 'row' }]} onPress={handleSecureLoginBypass}>
+                <Ionicons name="finger-print-outline" size={20} color="#0B6655" style={[isRtl ? { marginLeft: 8 } : { marginRight: 8 }]} />
+                <Text style={styles.secureLoginText}>{t.secureLoginBtn}</Text>
               </TouchableOpacity>
             </View>
           )}
 
           <View style={styles.mdmFooter}>
-            <View style={styles.mdmLine}>
-              <Text style={styles.serverAddressText}>{serverAddress || '192.168.100.199:8081'}</Text>
+            <View style={[styles.mdmLine, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+              <Text style={[styles.serverAddressText, { [isRtl ? 'marginLeft' : 'marginRight']: 6, [isRtl ? 'marginRight' : 'marginLeft']: 0 }]}>{serverAddress || '192.168.100.199:8081'}</Text>
               <TouchableOpacity onPress={onNavigateToSettings}>
-                <Text style={styles.settingsLinkText}>Server settings</Text>
+                <Text style={[styles.settingsLinkText, { [isRtl ? 'marginRight' : 'marginLeft']: 6, [isRtl ? 'marginLeft' : 'marginRight']: 0 }]}>{t.serverSettingsLink}</Text>
               </TouchableOpacity>
             </View>
-            <View style={styles.mdmLine}>
-              <Ionicons name="shield-checkmark-outline" size={12} color="#98A2B3" style={{ marginRight: 4 }} />
-              <Text style={styles.mdmText}>SAM Controls - Digital Faciliter</Text>
+            <View style={[styles.mdmLine, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+              <Ionicons name="shield-checkmark-outline" size={12} color="#98A2B3" style={[isRtl ? { marginLeft: 4 } : { marginRight: 4 }]} />
+              <Text style={styles.mdmText}>{t.appNameFooter}</Text>
             </View>
           </View>
         </ScrollView>
@@ -257,7 +267,7 @@ const styles = StyleSheet.create({
   formContainer: { paddingHorizontal: 24, marginTop: 15 },
   controlsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, marginBottom: 24 },
   checkboxContainer: { flexDirection: 'row', alignItems: 'center' },
-  checkboxChecked: { width: 18, height: 18, borderRadius: 4, backgroundColor: '#0B6655', justifyContent: 'center', alignItems: 'center', marginRight: 8 },
+  checkboxChecked: { width: 18, height: 18, borderRadius: 4, backgroundColor: '#0B6655', justifyContent: 'center', alignItems: 'center' },
   checkboxLabel: { fontSize: 14, color: '#475467' },
   forgotPasswordText: { fontSize: 14, color: '#0B6655', fontWeight: '600' },
   loginButton: { backgroundColor: '#0B6655', borderRadius: 10, height: 48, justifyContent: 'center', alignItems: 'center', marginTop: 10 },
@@ -271,7 +281,7 @@ const styles = StyleSheet.create({
   secureLoginText: { color: '#344054', fontSize: 15, fontWeight: '600' },
   mdmFooter: { marginTop: 30, alignItems: 'center', width: '100%', paddingHorizontal: 24 },
   mdmLine: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
-  serverAddressText: { color: '#475467', fontSize: 13, marginRight: 6 },
-  settingsLinkText: { color: '#0B6655', fontSize: 13, fontWeight: '600', textDecorationLine: 'underline', marginLeft: 6 },
+  serverAddressText: { color: '#475467', fontSize: 13 },
+  settingsLinkText: { color: '#0B6655', fontSize: 13, fontWeight: '600', textDecorationLine: 'underline' },
   mdmText: { color: '#98A2B3', fontSize: 12 },
 });

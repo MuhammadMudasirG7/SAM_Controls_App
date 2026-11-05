@@ -8,50 +8,73 @@ import {
     ActivityIndicator,
     Alert,
     Image,
-    Platform
+    Platform,
+    RefreshControl
 } from 'react-native';
-import { Ionicons, Feather, MaterialIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 
 import EmployeeDetailScreen from './EmployeeDetailScreen';
 import AdminNotificationsScreen from './AdminNotificationsScreen';
+import { translations, getGlobalLang, subscribeLang } from '../../../i18n';
 
 const PLACEHOLDER_AVATAR = 'https://via.placeholder.com/150';
 
 export default function AdminDashboardScreen({
     onLogout,
-    serverAddress = 'http://192.168.100.199:8081'
+    serverAddress
 }) {
-    const [activeTab, setActiveTab] = useState('dashboard');
+    const [currentLang, setCurrentLang] = useState(getGlobalLang());
+    const [activeTab, setActiveTab] = useState('overview');
     const [loading, setLoading] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
 
     const [usersList, setUsersList] = useState([]);
     const [locationsList, setLocationsList] = useState([]);
+    const [notificationsList, setNotificationsList] = useState([]);
 
     const [currentAdminView, setCurrentAdminView] = useState('dashboard_main'); 
     const [selectedEmployee, setSelectedEmployee] = useState(null);
 
-    // 🟢 Real-time Notifications State from Backend API
-    const [notificationsList, setNotificationsList] = useState([]);
-
-    const cleanBaseUrl = serverAddress.replace(/\/+$/, '');
+    const cleanBaseUrl = serverAddress ? serverAddress.replace(/\/+$/, '') : 'http://192.168.100.199:8081';
 
     useEffect(() => {
-        fetchUsers();
-        fetchLocations();
-        fetchAdminLeavesNotifications();
+        const unsubscribe = subscribeLang((newLang) => {
+            setCurrentLang(newLang);
+        });
+        return () => unsubscribe();
     }, []);
 
-    const fetchUsers = async () => {
+    const t = translations[currentLang];
+    const isRtl = currentLang === 'ur' || currentLang === 'ar';
+
+    useEffect(() => {
+        fetchAllAdminData();
+    }, []);
+
+    const fetchAllAdminData = async () => {
         setLoading(true);
+        await Promise.all([
+            fetchUsers(),
+            fetchLocations(),
+            fetchAdminLeavesNotifications()
+        ]);
+        setLoading(false);
+    };
+
+    const onRefresh = async () => {
+        setRefreshing(true);
+        await fetchAllAdminData();
+        setRefreshing(false);
+    };
+
+    const fetchUsers = async () => {
         try {
             const res = await fetch(`${cleanBaseUrl}/api/admin/users`);
             const json = await res.json();
-            if (json.success) {
-                setUsersList(json.users || []);
-            }
+            if (json.success) setUsersList(json.users || []);
         } catch (err) {
             console.log("Error loading users:", err);
-        } finally { setLoading(false); }
+        }
     };
 
     const fetchLocations = async () => {
@@ -72,14 +95,16 @@ export default function AdminDashboardScreen({
                     if (displayName.includes('(')) {
                         displayName = displayName.split('(')[0].trim();
                     }
-
                     return {
                         id: req._id || req.id,
                         employeeId: req.employeeId,
                         name: displayName,
+                        leaveType: req.leaveTypeName || req.leaveType || 'Annual',
+                        totalDays: req.totalDays || 1,
                         message: `Applied for ${req.leaveTypeName || req.leaveType} (${req.totalDays} days)`,
                         time: new Date(req.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                        status: req.status
+                        status: req.status || 'pending',
+                        createdAt: req.createdAt
                     };
                 });
                 setNotificationsList(liveNotifs);
@@ -91,7 +116,7 @@ export default function AdminDashboardScreen({
 
     const handleToggleBlock = async (userId, currentBlockedStatus, userName) => {
         Alert.alert(
-            "Manage Access",
+            "Manage Access Control",
             `Are you sure you want to ${currentBlockedStatus ? 'unblock' : 'block'} ${userName}?`,
             [
                 { text: "Cancel", style: "cancel" },
@@ -108,7 +133,7 @@ export default function AdminDashboardScreen({
                             if (json.success) {
                                 setUsersList(prev => (prev || []).map(u => (u._id === userId || u.id === userId) ? { ...u, isBlocked: !currentBlockedStatus } : u));
                             }
-                        } catch (err) { Alert.alert("Error", "Network failed."); }
+                        } catch (err) { Alert.alert("Error", "Network connection failed."); }
                     }
                 }
             ]
@@ -119,6 +144,7 @@ export default function AdminDashboardScreen({
         return (
             <EmployeeDetailScreen 
                 employee={selectedEmployee} 
+                serverAddress={serverAddress}
                 onBack={() => { setCurrentAdminView('dashboard_main'); fetchAdminLeavesNotifications(); }}
                 onUpdateLeaveStatus={async (empId, leaveId, status) => {
                     try {
@@ -162,228 +188,336 @@ export default function AdminDashboardScreen({
     const totalPhonesCount = safeUsers.length;
     const activePhonesCount = safeUsers.filter(u => !u.isBlocked).length;
     const blockedPhonesCount = safeUsers.filter(u => u.isBlocked).length;
-
-    const pendingNotifsCount = safeNotifications.filter(n => n.status === 'pending').length;
+    const pendingLeavesCount = safeNotifications.filter(n => n.status === 'pending').length;
 
     return (
-        <View style={styles.container}>
-            <View style={styles.header}>
-                <View style={styles.brandSection}>
+        <View style={[styles.container, { direction: isRtl ? 'rtl' : 'ltr' }]}>
+            {/* Top Header */}
+            <View style={[styles.header, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                <View style={[styles.brandSection, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                     <View style={styles.logoBox}><Text style={styles.logoText}>S</Text></View>
-                    <View>
+                    <View style={{ alignItems: isRtl ? 'flex-end' : 'flex-start', [isRtl ? 'marginRight' : 'marginLeft']: 12 }}>
                         <Text style={styles.brandTitle}>SAM Controls</Text>
-                        <Text style={styles.brandSubtitle}>PORTAL CONTROL</Text>
+                        <Text style={styles.brandSubtitle}>{t.adminPortal}</Text>
                     </View>
                 </View>
 
-                <TouchableOpacity style={styles.notificationBellBtn} onPress={() => setCurrentAdminView('notifications')}>
-                    <Ionicons name="notifications-outline" size={22} color="#0B6655" />
-                    {pendingNotifsCount > 0 && (
-                        <View style={styles.notificationBadgeDot}>
-                            <Text style={styles.notificationBadgeText}>{pendingNotifsCount}</Text>
-                        </View>
-                    )}
-                </TouchableOpacity>
+                <View style={[styles.headerActions, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                    <TouchableOpacity style={[styles.notificationBellBtn, { [isRtl ? 'marginLeft' : 'marginRight']: 8 }]} onPress={() => setCurrentAdminView('notifications')}>
+                        <Ionicons name="notifications-outline" size={22} color="#101828" />
+                        {pendingLeavesCount > 0 && (
+                            <View style={styles.notificationBadgeDot}>
+                                <Text style={styles.notificationBadgeText}>{pendingLeavesCount}</Text>
+                            </View>
+                        )}
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.logoutButton} onPress={onLogout}>
+                        <Ionicons name="log-out-outline" size={20} color="#101828" />
+                    </TouchableOpacity>
+                </View>
             </View>
 
-            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                {activeTab === 'dashboard' && (
-                    <View style={{ padding: 16 }}>
-                        <Text style={styles.mainTitle}>System Overview</Text>
-                        <Text style={styles.subTitleText}>Real-time tracking of registered phones and system status.</Text>
-                        
-                        <View style={styles.statsContainerRow}>
-                            <View style={[styles.statCardItem, { borderColor: '#0B6655', borderWidth: 1.5 }]}>
-                                <View style={styles.statCardInner}>
-                                    <View style={styles.statIconBox}><Ionicons name="phone-portrait-outline" size={16} color="#0B6655" /></View>
-                                    <View style={{ marginLeft: 10 }}>
-                                        <Text style={styles.statNumberText}>{totalPhonesCount}</Text>
-                                        <Text style={styles.statLabelText}>Total phones</Text>
+            {/* Custom Tab Bar */}
+            <View style={styles.tabsWrapper}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.tabsScrollContent, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                    <TouchableOpacity style={[styles.tabButton, activeTab === 'overview' && styles.tabButtonActive, { flexDirection: isRtl ? 'row-reverse' : 'row' }]} onPress={() => setActiveTab('overview')}>
+                        <Ionicons name="layers-outline" size={16} color={activeTab === 'overview' ? '#1A332C' : '#667085'} style={{ [isRtl ? 'marginLeft' : 'marginRight']: 6 }} />
+                        <Text style={[styles.tabButtonText, activeTab === 'overview' && styles.tabButtonTextActive]}>{t.overview}</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity style={[styles.tabButton, activeTab === 'users' && styles.tabButtonActive]} onPress={() => setActiveTab('users')}>
+                        <Text style={[styles.tabButtonText, activeTab === 'users' && styles.tabButtonTextActive]}>{t.employees} ({totalPhonesCount})</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity style={[styles.tabButton, activeTab === 'locations' && styles.tabButtonActive]} onPress={() => setActiveTab('locations')}>
+                        <Text style={[styles.tabButtonText, activeTab === 'locations' && styles.tabButtonTextActive]}>{t.geofences}</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity style={[styles.tabButton, activeTab === 'leaves' && styles.tabButtonActive]} onPress={() => setActiveTab('leaves')}>
+                        <Text style={[styles.tabButtonText, activeTab === 'leaves' && styles.tabButtonTextActive]}>{t.leaves}</Text>
+                    </TouchableOpacity>
+                </ScrollView>
+            </View>
+
+            {/* Main Content */}
+            <ScrollView 
+                style={styles.mainContent} 
+                contentContainerStyle={{ paddingBottom: 40 }}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#0B6655']} />}
+            >
+                {loading && !refreshing && (
+                    <View style={styles.loadingOverlay}>
+                        <ActivityIndicator size="large" color="#0B6655" />
+                    </View>
+                )}
+
+                {/* OVERVIEW TAB */}
+                {activeTab === 'overview' && (
+                    <View style={[styles.tabContentContainer, { alignItems: isRtl ? 'flex-end' : 'flex-start' }]}>
+                        <Text style={[styles.sectionHeaderTitle, { textAlign: isRtl ? 'right' : 'left' }]}>{t.systemMetrics}</Text>
+                        <Text style={[styles.sectionHeaderSubtitle, { textAlign: isRtl ? 'right' : 'left' }]}>{t.systemMetricsSub}</Text>
+
+                        <View style={styles.metricsGridContainer}>
+                            <View style={[styles.metricsGridRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                                <View style={[styles.metricCard, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                                    <View style={[styles.metricIconBox, { backgroundColor: '#E2E8F0' }]}>
+                                        <Ionicons name="phone-portrait-outline" size={22} color="#334155" />
+                                    </View>
+                                    <View style={[styles.metricTextData, { alignItems: isRtl ? 'flex-end' : 'flex-start', [isRtl ? 'marginRight' : 'marginLeft']: 12 }]}>
+                                        <Text style={styles.metricCardValue}>{totalPhonesCount}</Text>
+                                        <Text style={styles.metricCardLabel}>{t.totalDevices}</Text>
+                                    </View>
+                                </View>
+
+                                <View style={[styles.metricCard, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                                    <View style={[styles.metricIconBox, { backgroundColor: '#D1FAE5' }]}>
+                                        <Ionicons name="checkmark-circle-outline" size={22} color="#059669" />
+                                    </View>
+                                    <View style={[styles.metricTextData, { alignItems: isRtl ? 'flex-end' : 'flex-start', [isRtl ? 'marginRight' : 'marginLeft']: 12 }]}>
+                                        <Text style={styles.metricCardValue}>{activePhonesCount}</Text>
+                                        <Text style={styles.metricCardLabel}>{t.activeOnline}</Text>
                                     </View>
                                 </View>
                             </View>
 
-                            <View style={styles.statCardItem}>
-                                <View style={styles.statCardInner}>
-                                    <View style={[styles.statIconBox, { backgroundColor: '#ECFDF3' }]}><Ionicons name="checkmark-circle-outline" size={16} color="#027A48" /></View>
-                                    <View style={{ marginLeft: 10 }}>
-                                        <Text style={styles.statNumberText}>{activePhonesCount}</Text>
-                                        <Text style={styles.statLabelText}>Active</Text>
+                            <View style={[styles.metricsGridRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                                <View style={[styles.metricCard, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                                    <View style={[styles.metricIconBox, { backgroundColor: '#FEE2E2' }]}>
+                                        <Ionicons name="ban-outline" size={22} color="#DC2626" />
+                                    </View>
+                                    <View style={[styles.metricTextData, { alignItems: isRtl ? 'flex-end' : 'flex-start', [isRtl ? 'marginRight' : 'marginLeft']: 12 }]}>
+                                        <Text style={styles.metricCardValue}>{blockedPhonesCount}</Text>
+                                        <Text style={styles.metricCardLabel}>{t.restrictedAccess}</Text>
                                     </View>
                                 </View>
-                            </View>
 
-                            <View style={styles.statCardItem}>
-                                <View style={styles.statCardInner}>
-                                    <View style={[styles.statIconBox, { backgroundColor: '#FEE4E2' }]}><Ionicons name="ban-outline" size={16} color="#B42318" /></View>
-                                    <View style={{ marginLeft: 10 }}>
-                                        <Text style={styles.statNumberText}>{blockedPhonesCount}</Text>
-                                        <Text style={styles.statLabelText}>Blocked</Text>
+                                <View style={[styles.metricCard, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                                    <View style={[styles.metricIconBox, { backgroundColor: '#FEE2E2' }]}>
+                                        <Ionicons name="time-outline" size={22} color="#DC2626" />
+                                    </View>
+                                    <View style={[styles.metricTextData, { alignItems: isRtl ? 'flex-end' : 'flex-start', [isRtl ? 'marginRight' : 'marginLeft']: 12 }]}>
+                                        <Text style={styles.metricCardValue}>{pendingLeavesCount}</Text>
+                                        <Text style={styles.metricCardLabel}>{t.pendingLeaves}</Text>
                                     </View>
                                 </View>
                             </View>
+                        </View>
+
+                        <Text style={[styles.sectionHeaderTitle, { marginTop: 24, textAlign: isRtl ? 'right' : 'left' }]}>{t.quickLinks}</Text>
+                        <Text style={[styles.sectionHeaderSubtitle, { textAlign: isRtl ? 'right' : 'left' }]}>{t.quickLinksSub}</Text>
+
+                        <View style={[styles.quickActionCardsRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                            <TouchableOpacity style={styles.quickActionBoxDark} onPress={() => setActiveTab('users')}>
+                                <View style={[styles.actionButtonInnerContent, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                                    <Ionicons name="people-outline" size={20} color="#FFFFFF" style={{ [isRtl ? 'marginLeft' : 'marginRight']: 8 }} />
+                                    <Text style={styles.quickActionTitleDark}>{t.employees}</Text>
+                                </View>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity style={styles.quickActionBoxGreen} onPress={() => setActiveTab('leaves')}>
+                                <View style={[styles.actionButtonInnerContent, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                                    <Ionicons name="document-text-outline" size={20} color="#FFFFFF" style={{ [isRtl ? 'marginLeft' : 'marginRight']: 8 }} />
+                                    <Text style={styles.quickActionTitleDark}>{t.leaveApprovals}</Text>
+                                </View>
+                            </TouchableOpacity>
                         </View>
                     </View>
                 )}
 
+                {/* EMPLOYEES TAB */}
                 {activeTab === 'users' && (
-                    <View style={{ padding: 16 }}>
-                        <Text style={styles.mainTitle}>Users Directory</Text>
-                        <Text style={styles.subTitleText}>Tap employee card to view leaves, 8-hour duty, and salary.</Text>
-                        
-                        {loading ? <ActivityIndicator size="large" color="#0B6655" style={{ marginTop: 40 }} /> : (
-                            <View style={{ marginTop: 15 }}>
-                                {safeUsers.length === 0 ? <Text style={styles.emptyText}>No users found.</Text> : safeUsers.map((user) => (
-                                    <View key={user._id || user.id} style={styles.cardItem}>
-                                        <TouchableOpacity style={styles.cardHeader} onPress={() => { setSelectedEmployee(user); setCurrentAdminView('employee_detail'); }}>
-                                            <Image source={{ uri: user.avatar || PLACEHOLDER_AVATAR }} style={styles.avatar} />
-                                            <View style={styles.cardInfo}>
-                                                <Text style={styles.cardTitle}>{user.name}</Text>
-                                                <Text style={styles.cardSubText}>{user.employeeId} • Tap for Leave & Quota</Text>
-                                            </View>
-                                            <Ionicons name="chevron-forward" size={18} color="#667085" />
-                                        </TouchableOpacity>
+                    <View style={[styles.tabContentContainer, { alignItems: isRtl ? 'flex-end' : 'flex-start' }]}>
+                        <Text style={[styles.sectionHeaderTitle, { textAlign: isRtl ? 'right' : 'left' }]}>{t.empDirectory}</Text>
+                        <Text style={[styles.sectionHeaderSubtitle, { textAlign: isRtl ? 'right' : 'left' }]}>{t.empDirectorySub}</Text>
 
-                                        <View style={styles.badgeRow}>
-                                            <View style={[styles.statusBadge, user.isBlocked ? styles.blockedBadge : styles.activeBadge]}>
-                                                <View style={[styles.badgeDot, user.isBlocked ? { backgroundColor: '#B42318' } : { backgroundColor: '#027A48' }]} />
-                                                <Text style={[styles.badgeText, user.isBlocked ? styles.blockedText : styles.activeText]}>
-                                                    {user.isBlocked ? 'Blocked' : 'Active (8h Capped)'}
-                                                </Text>
-                                            </View>
-
-                                            <TouchableOpacity 
-                                                style={[styles.quickBlockBtn, user.isBlocked ? styles.unblockBtnStyle : styles.blockBtnStyle]} 
-                                                onPress={() => handleToggleBlock(user._id || user.id, user.isBlocked, user.name)}
-                                            >
-                                                <Text style={[styles.quickBlockText, user.isBlocked ? { color: '#027A48' } : { color: '#B42318' }]}>
-                                                    {user.isBlocked ? 'Unblock' : 'Block'}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        </View>
-                                    </View>
-                                ))}
+                        {safeUsers.length === 0 ? (
+                            <View style={styles.emptyStateContainer}>
+                                <Ionicons name="people-outline" size={36} color="#98A2B3" />
+                                <Text style={styles.emptyStateText}>{t.noEmployees}</Text>
                             </View>
+                        ) : (
+                            safeUsers.map((user) => (
+                                <View key={user._id || user.id} style={styles.employeeCardBox}>
+                                    <TouchableOpacity 
+                                        style={[styles.employeeCardMain, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}
+                                        onPress={() => { setSelectedEmployee(user); setCurrentAdminView('employee_detail'); }}
+                                    >
+                                        <Image source={{ uri: user.avatar || PLACEHOLDER_AVATAR }} style={styles.employeeAvatar} />
+                                        <View style={{ flex: 1, [isRtl ? 'marginRight' : 'marginLeft']: 12, alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
+                                            <Text style={styles.employeeNameText}>{user.name}</Text>
+                                            <Text style={styles.employeeSubText}>{user.employeeId} · {t.tapForDetails}</Text>
+                                        </View>
+                                        <Ionicons name={isRtl ? "chevron-back" : "chevron-forward"} size={18} color="#667085" />
+                                    </TouchableOpacity>
+
+                                    <View style={[styles.employeeCardFooter, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                                        <View style={[styles.statusCapsuleBadge, user.isBlocked ? styles.badgeBlockedBg : styles.badgeActiveBg, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                                            <View style={[styles.statusDotMarker, user.isBlocked ? { backgroundColor: '#B42318' } : { backgroundColor: '#027A48' }, { [isRtl ? 'marginLeft' : 'marginRight']: 6 }]} />
+                                            <Text style={[styles.statusCapsuleText, user.isBlocked ? { color: '#B42318' } : { color: '#027A48' }]}>
+                                                {user.isBlocked ? t.blockedAccess : t.activeCapped}
+                                            </Text>
+                                        </View>
+
+                                        <TouchableOpacity 
+                                            style={[styles.actionToggleButton, user.isBlocked ? styles.unblockBtnStyle : styles.blockBtnStyle]}
+                                            onPress={() => handleToggleBlock(user._id || user.id, user.isBlocked, user.name)}
+                                        >
+                                            <Text style={[styles.actionToggleText, user.isBlocked ? { color: '#027A48' } : { color: '#B42318' }]}>
+                                                {user.isBlocked ? t.unblock : t.block}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            ))
                         )}
                     </View>
                 )}
 
+                {/* GEOFENCES TAB */}
                 {activeTab === 'locations' && (
-                    <View style={{ padding: 16 }}>
-                        <Text style={styles.mainTitle}>Geofence Locations</Text>
-                        <Text style={styles.subTitleText}>Operational site boundary controls.</Text>
-                        
-                        <View style={{ marginTop: 20 }}>
-                            {safeLocations.length === 0 ? (
-                                <Text style={styles.emptyText}>No locations configured yet.</Text>
-                            ) : (
-                                safeLocations.map((loc) => (
-                                    <View key={loc._id || loc.id} style={styles.cardItem}>
-                                        <Text style={styles.cardTitle}>{loc.name} ({loc.code})</Text>
-                                        <Text style={styles.cardSubText}>City: {loc.city} • Radius: {loc.boundaryRadius || 500}m</Text>
+                    <View style={[styles.tabContentContainer, { alignItems: isRtl ? 'flex-end' : 'flex-start' }]}>
+                        <Text style={[styles.sectionHeaderTitle, { textAlign: isRtl ? 'right' : 'left' }]}>{t.geoWorkLocations}</Text>
+                        <Text style={[styles.sectionHeaderSubtitle, { textAlign: isRtl ? 'right' : 'left' }]}>{t.geoWorkSub}</Text>
+
+                        {safeLocations.length === 0 ? (
+                            <View style={styles.emptyStateContainer}>
+                                <Ionicons name="location-outline" size={36} color="#98A2B3" />
+                                <Text style={styles.emptyStateText}>{t.noLocations}</Text>
+                            </View>
+                        ) : (
+                            safeLocations.map((loc) => (
+                                <View key={loc._id || loc.id} style={styles.locationItemCard}>
+                                    <View style={[styles.locationHeaderRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                                        <View style={styles.locationIconFrame}>
+                                            <Ionicons name="business-outline" size={18} color="#0B6655" />
+                                        </View>
+                                        <View style={{ flex: 1, [isRtl ? 'marginRight' : 'marginLeft']: 12, alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
+                                            <Text style={styles.locationNameText}>{loc.name} ({loc.code})</Text>
+                                            <Text style={styles.locationCoordinatesText}>City: {loc.city || 'Multan'}</Text>
+                                        </View>
+                                        <View style={styles.radiusTag}>
+                                            <Text style={styles.radiusTagText}>{loc.boundaryRadius || 500}m</Text>
+                                        </View>
                                     </View>
-                                ))
-                            )}
-                        </View>
+                                </View>
+                            ))
+                        )}
                     </View>
                 )}
 
+                {/* LEAVES TAB */}
                 {activeTab === 'leaves' && (
-                    <View style={{ padding: 16 }}>
-                        <Text style={styles.mainTitle}>Leave Approvals Center</Text>
-                        <Text style={styles.subTitleText}>Review real-time applications submitted by employees.</Text>
-                        
-                        <View style={{ marginTop: 20 }}>
-                            {safeNotifications.length === 0 ? (
-                                <Text style={styles.emptyText}>No leave requests submitted yet.</Text>
-                            ) : (
-                                safeNotifications.map((item) => (
-                                    <TouchableOpacity 
-                                        key={item.id} 
-                                        style={styles.cardItem}
-                                        onPress={() => {
-                                            const found = safeUsers.find(u => u.employeeId === item.employeeId) || { employeeId: item.employeeId, name: item.name };
-                                            setSelectedEmployee(found);
-                                            setCurrentAdminView('employee_detail');
-                                        }}
-                                    >
-                                        <Text style={styles.cardTitle}>{item.name} ({item.employeeId})</Text>
-                                        <Text style={styles.cardSubText}>{item.message}</Text>
-                                        <Text style={{ fontSize: 11, color: '#0B6655', marginTop: 6, fontWeight: '700' }}>Status: {item.status.toUpperCase()} • Tap to review →</Text>
-                                    </TouchableOpacity>
-                                ))
-                            )}
-                        </View>
+                    <View style={[styles.tabContentContainer, { alignItems: isRtl ? 'flex-end' : 'flex-start' }]}>
+                        <Text style={[styles.sectionHeaderTitle, { textAlign: isRtl ? 'right' : 'left' }]}>{t.leaveApprovalsCenter}</Text>
+                        <Text style={[styles.sectionHeaderSubtitle, { textAlign: isRtl ? 'right' : 'left' }]}>{t.leaveApprovalsSub}</Text>
+
+                        {safeNotifications.length === 0 ? (
+                            <View style={styles.emptyStateContainer}>
+                                <Ionicons name="document-text-outline" size={36} color="#98A2B3" />
+                                <Text style={styles.emptyStateText}>{t.noLeaveRequests}</Text>
+                            </View>
+                        ) : (
+                            safeNotifications.map((item) => (
+                                <TouchableOpacity 
+                                    key={item.id} 
+                                    style={styles.locationItemCard}
+                                    onPress={() => {
+                                        const matchedUser = safeUsers.find(u => u.employeeId === item.employeeId) || { employeeId: item.employeeId, name: item.name };
+                                        setSelectedEmployee(matchedUser);
+                                        setCurrentAdminView('employee_detail');
+                                    }}
+                                >
+                                    <View style={[styles.locationHeaderRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                                        <View style={[styles.locationIconFrame, { backgroundColor: '#FFFAEB' }]}>
+                                            <Ionicons name="calendar-outline" size={18} color="#B24E00" />
+                                        </View>
+                                        <View style={{ flex: 1, [isRtl ? 'marginRight' : 'marginLeft']: 12, alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
+                                            <Text style={styles.locationNameText}>{item.name} <Text style={{ fontSize: 12, color: '#667085' }}>({item.employeeId})</Text></Text>
+                                            <Text style={styles.locationCoordinatesText}>{item.message}</Text>
+                                        </View>
+                                        <View style={[
+                                            styles.statusCapsuleBadge,
+                                            item.status === 'approved' ? styles.badgeActiveBg :
+                                            item.status === 'rejected' ? styles.badgeBlockedBg : styles.badgePendingBg
+                                        ]}>
+                                            <Text style={[
+                                                styles.statusCapsuleText,
+                                                item.status === 'approved' ? { color: '#027A48' } :
+                                                item.status === 'rejected' ? { color: '#B42318' } : { color: '#B24E00' }
+                                            ]}>
+                                                {item.status.toUpperCase()}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                </TouchableOpacity>
+                            ))
+                        )}
                     </View>
                 )}
             </ScrollView>
-
-            <View style={styles.bottomNavContainer}>
-                <TouchableOpacity style={styles.bottomNavTab} onPress={() => setActiveTab('dashboard')}>
-                    <Ionicons name="grid-outline" size={20} color={activeTab === 'dashboard' ? '#0B6655' : '#667085'} />
-                    <Text style={[styles.bottomNavText, activeTab === 'dashboard' && styles.bottomNavTextActive]}>Dashboard</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={styles.bottomNavTab} onPress={() => setActiveTab('users')}>
-                    <Ionicons name="people-outline" size={20} color={activeTab === 'users' ? '#0B6655' : '#667085'} />
-                    <Text style={[styles.bottomNavText, activeTab === 'users' && styles.bottomNavTextActive]}>Users</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={styles.bottomNavTab} onPress={() => setActiveTab('locations')}>
-                    <Ionicons name="location-outline" size={20} color={activeTab === 'locations' ? '#0B6655' : '#667085'} />
-                    <Text style={[styles.bottomNavText, activeTab === 'locations' && styles.bottomNavTextActive]}>Locations</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={styles.bottomNavTab} onPress={() => setActiveTab('leaves')}>
-                    <Ionicons name="calendar-outline" size={20} color={activeTab === 'leaves' ? '#0B6655' : '#667085'} />
-                    <Text style={[styles.bottomNavText, activeTab === 'leaves' && styles.bottomNavTextActive]}>Leaves</Text>
-                </TouchableOpacity>
-            </View>
         </View>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F7F9FA', paddingTop: Platform.OS === 'android' ? 24 : 0 },
-    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#EAECF0' },
+    container: { flex: 1, backgroundColor: '#FAF7F2' },
+    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 54 : 36, paddingBottom: 16, backgroundColor: '#FAF7F2', borderBottomWidth: 1, borderBottomColor: '#EAE5DF' },
     brandSection: { flexDirection: 'row', alignItems: 'center' },
-    logoBox: { width: 36, height: 36, backgroundColor: '#0B6655', borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginRight: 10 },
-    logoText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' },
-    brandTitle: { fontSize: 15, fontWeight: '700', color: '#101828' },
-    brandSubtitle: { fontSize: 10, color: '#667085', fontWeight: '600' },
-    notificationBellBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#F2F4F7', justifyContent: 'center', alignItems: 'center', position: 'relative' },
-    notificationBadgeDot: { position: 'absolute', top: 6, right: 6, backgroundColor: '#B42318', width: 16, height: 16, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
-    notificationBadgeText: { color: '#FFF', fontSize: 9, fontWeight: 'bold' },
-    scrollContent: { paddingBottom: 90 },
-    mainTitle: { fontSize: 22, fontWeight: '700', color: '#101828' },
-    subTitleText: { fontSize: 13, color: '#667085', marginTop: 2 },
-    statsContainerRow: { flexDirection: 'row', marginTop: 15, justifyContent: 'space-between' },
-    statCardItem: { flex: 1, backgroundColor: '#FFFFFF', borderRadius: 12, padding: 12, marginRight: 8, borderWidth: 1, borderColor: '#EAECF0', elevation: 1 },
-    statCardInner: { flexDirection: 'row', alignItems: 'center' },
-    statIconBox: { width: 30, height: 30, borderRadius: 6, backgroundColor: '#F2F4F7', justifyContent: 'center', alignItems: 'center' },
-    statNumberText: { fontSize: 16, fontWeight: '700', color: '#101828' },
-    statLabelText: { fontSize: 10, color: '#667085', fontWeight: '500' },
-    cardItem: { backgroundColor: '#FFFFFF', borderRadius: 14, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: '#EAECF0', elevation: 2 },
-    cardHeader: { flexDirection: 'row', alignItems: 'center' },
-    avatar: { width: 44, height: 44, borderRadius: 22, marginRight: 12 },
-    cardInfo: { flex: 1 },
-    cardTitle: { fontSize: 15, fontWeight: '700', color: '#101828' },
-    cardSubText: { fontSize: 12, color: '#667085', marginTop: 1 },
-    badgeRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#F2F4F7' },
-    statusBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-    activeBadge: { backgroundColor: '#ECFDF3' },
-    blockedBadge: { backgroundColor: '#FEE4E2' },
-    badgeDot: { width: 6, height: 6, borderRadius: 3, marginRight: 6 },
-    badgeText: { fontSize: 11, fontWeight: '600' },
-    activeText: { color: '#027A48' },
-    blockedText: { color: '#B42318' },
-    quickBlockBtn: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, borderWidth: 1 },
-    blockBtnStyle: { backgroundColor: '#FEE4E2', borderColor: '#FECDCA' },
-    unblockBtnStyle: { backgroundColor: '#ECFDF3', borderColor: '#ABEFC6' },
-    quickBlockText: { fontSize: 11, fontWeight: '700' },
-    emptyText: { textAlign: 'center', padding: 30, color: '#667085', fontSize: 13 },
-    bottomNavContainer: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 60, backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: '#EAECF0', flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', paddingBottom: Platform.OS === 'ios' ? 10 : 0 },
-    bottomNavTab: { alignItems: 'center', justifyContent: 'center', flex: 1 },
-    bottomNavText: { fontSize: 11, color: '#667085', marginTop: 2, fontWeight: '500' },
-    bottomNavTextActive: { color: '#0B6655', fontWeight: '700' }
+    logoBox: { width: 38, height: 38, borderRadius: 10, backgroundColor: '#1A332C', justifyContent: 'center', alignItems: 'center' },
+    logoText: { color: '#FFFFFF', fontSize: 20, fontWeight: 'bold' },
+    brandTitle: { fontSize: 16, fontWeight: '700', color: '#101828' },
+    brandSubtitle: { fontSize: 10, fontWeight: '600', color: '#667085', letterSpacing: 0.5 },
+    headerActions: { flexDirection: 'row', alignItems: 'center' },
+    notificationBellBtn: { width: 38, height: 38, borderRadius: 10, backgroundColor: '#EAE5DF', justifyContent: 'center', alignItems: 'center', position: 'relative' },
+    notificationBadgeDot: { position: 'absolute', top: -4, right: -4, backgroundColor: '#D92D20', borderRadius: 9, minWidth: 18, height: 18, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 4, borderWidth: 1.5, borderColor: '#FFFFFF' },
+    notificationBadgeText: { color: '#FFFFFF', fontSize: 9, fontWeight: '700' },
+    logoutButton: { width: 38, height: 38, borderRadius: 10, backgroundColor: '#EAE5DF', justifyContent: 'center', alignItems: 'center' },
+    tabsWrapper: { backgroundColor: '#FAF7F2', borderBottomWidth: 1, borderBottomColor: '#EAE5DF' },
+    tabsScrollContent: { paddingHorizontal: 16, paddingVertical: 12 },
+    tabButton: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: 'transparent', marginHorizontal: 4 },
+    tabButtonActive: { backgroundColor: '#C8DDD7', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 1 },
+    tabButtonText: { fontSize: 13, fontWeight: '600', color: '#667085' },
+    tabButtonTextActive: { color: '#1A332C', fontWeight: '700' },
+    mainContent: { flex: 1 },
+    loadingOverlay: { paddingVertical: 12, alignItems: 'center' },
+    tabContentContainer: { padding: 20, width: '100%' },
+    sectionHeaderTitle: { fontSize: 20, fontWeight: '800', color: '#101828' },
+    sectionHeaderSubtitle: { fontSize: 13, color: '#667085', marginTop: 4, marginBottom: 20, lineHeight: 18 },
+    metricsGridContainer: { width: '100%' },
+    metricsGridRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
+    metricCard: { flex: 1, backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, flexDirection: 'row', alignItems: 'center', marginHorizontal: 4, borderWidth: 1, borderColor: '#EAE5DF', shadowColor: '#101828', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 2, elevation: 1 },
+    metricIconBox: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+    metricTextData: { flex: 1 },
+    metricCardValue: { fontSize: 22, fontWeight: '800', color: '#101828' },
+    metricCardLabel: { fontSize: 11, fontWeight: '600', color: '#667085', marginTop: 2 },
+    quickActionCardsRow: { flexDirection: 'row', justifyContent: 'space-between', marginHorizontal: -4, width: '100%' },
+    quickActionBoxDark: { flex: 1, backgroundColor: '#2C4A42', borderRadius: 16, paddingVertical: 18, paddingHorizontal: 16, marginHorizontal: 4, justifyContent: 'center', alignItems: 'center', shadowColor: '#101828', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 },
+    quickActionBoxGreen: { flex: 1, backgroundColor: '#7C9A8E', borderRadius: 16, paddingVertical: 18, paddingHorizontal: 16, marginHorizontal: 4, justifyContent: 'center', alignItems: 'center', shadowColor: '#101828', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 },
+    actionButtonInnerContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+    quickActionTitleDark: { fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
+    emptyStateContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 40, backgroundColor: '#FFFFFF', borderRadius: 12, borderWidth: 1, borderColor: '#EAE5DF', width: '100%' },
+    emptyStateText: { fontSize: 14, color: '#667085', fontWeight: '500', marginTop: 12 },
+    employeeCardBox: { backgroundColor: '#FFFFFF', borderRadius: 12, marginBottom: 12, borderWidth: 1, borderColor: '#EAE5DF', overflow: 'hidden', width: '100%' },
+    employeeCardMain: { flexDirection: 'row', alignItems: 'center', padding: 16 },
+    employeeAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#F2F4F7' },
+    employeeNameText: { fontSize: 15, fontWeight: '700', color: '#101828' },
+    employeeSubText: { fontSize: 12, color: '#667085', marginTop: 2 },
+    employeeCardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#FAF7F2', borderTopWidth: 1, borderTopColor: '#EAE5DF' },
+    statusCapsuleBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+    badgeActiveBg: { backgroundColor: '#ECFDF3' },
+    badgeBlockedBg: { backgroundColor: '#FEF3F2' },
+    badgePendingBg: { backgroundColor: '#FFFAEB' },
+    statusDotMarker: { width: 6, height: 6, borderRadius: 3 },
+    statusCapsuleText: { fontSize: 11, fontWeight: '700' },
+    actionToggleButton: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 6, backgroundColor: '#FFFFFF', borderWidth: 1 },
+    blockBtnStyle: { borderColor: '#FECDCA' },
+    unblockBtnStyle: { borderColor: '#A3E635' },
+    actionToggleText: { fontSize: 12, fontWeight: '700' },
+    locationItemCard: { backgroundColor: '#FFFFFF', borderRadius: 12, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#EAE5DF', width: '100%' },
+    locationHeaderRow: { flexDirection: 'row', alignItems: 'center' },
+    locationIconFrame: { width: 38, height: 38, borderRadius: 8, backgroundColor: '#F4FBF9', justifyContent: 'center', alignItems: 'center' },
+    locationNameText: { fontSize: 15, fontWeight: '700', color: '#101828' },
+    locationCoordinatesText: { fontSize: 12, color: '#667085', marginTop: 2 },
+    radiusTag: { backgroundColor: '#F4FBF9', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#E6F4F1' },
+    radiusTagText: { fontSize: 11, fontWeight: '700', color: '#0B6655' }
 });

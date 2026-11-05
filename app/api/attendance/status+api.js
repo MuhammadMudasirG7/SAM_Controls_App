@@ -23,13 +23,42 @@ export async function GET(request) {
     const url = new URL(request.url);
     const employeeId = url.searchParams.get('employeeId');
     if (!employeeId) return Response.json({ success: false, message: 'Employee ID is required' }, { status: 400 });
+    
     const todayDate = getKarachiDate();
     const attendance = await AttendanceLog.findOne({ employeeId, date: todayDate });
-    if (!attendance) return Response.json({ success: true, state: 'checked_out', totalHours: '00h 00m', lastCheckIn: '--:--', lastCheckOut: '--:--', data: { status: 'checked_out', date: todayDate, checkIn: null, checkOut: null } });
-    const lastCheckInStr = attendance.checkIn?.time ? formatTime(attendance.checkIn.time) : '--:--';
-    const lastCheckOutStr = attendance.checkOut?.time ? formatTime(attendance.checkOut.time) : '--:--';
+    
+    if (!attendance) {
+      return Response.json({ 
+        success: true, 
+        state: 'checked_out', 
+        totalHours: '00h 00m', 
+        lastCheckIn: '--:--', 
+        lastCheckOut: '--:--', 
+        data: { status: 'checked_out', date: todayDate, checkIn: null, checkOut: null } 
+      });
+    }
+
+    const checkInVal = attendance.checkIn?.time || attendance.checkIn;
+    const checkOutVal = attendance.checkOut?.time || attendance.checkOut;
+
+    const lastCheckInStr = checkInVal ? formatTime(checkInVal) : '--:--';
+    const lastCheckOutStr = checkOutVal ? formatTime(checkInVal) : '--:--';
     const durationMinutes = attendance.checkOut?.durationMinutes ?? 0;
-    return Response.json({ success: true, state: attendance.status, totalHours: `${Math.floor(durationMinutes / 60)}h ${durationMinutes % 60}m`, lastCheckIn: lastCheckInStr, lastCheckOut: lastCheckOutStr, data: attendance });
+
+    // Yahan ensure kar rahe hain ke agar checkOut ho chuka hai to state 'checked_out' ho
+    let currentStatus = attendance.status;
+    if (attendance.checkOut && attendance.checkOut.time) {
+      currentStatus = 'checked_out';
+    }
+
+    return Response.json({ 
+      success: true, 
+      state: currentStatus, 
+      totalHours: `${Math.floor(durationMinutes / 60)}h ${durationMinutes % 60}m`, 
+      lastCheckIn: lastCheckInStr, 
+      lastCheckOut: lastCheckOutStr, 
+      data: attendance 
+    });
   } catch (error) {
     return Response.json({ success: false, message: 'Internal Server Error: ' + error.message }, { status: 500 });
   }

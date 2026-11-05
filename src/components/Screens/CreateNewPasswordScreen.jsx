@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   StyleSheet, 
   Text, 
@@ -8,11 +8,23 @@ import {
   ScrollView 
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
+import { translations, getGlobalLang, subscribeLang } from '../../../i18n';
 
 export default function CreateNewPasswordScreen({ onBackToOtp, onResetSuccess }) {
+  const [currentLang, setCurrentLang] = useState(getGlobalLang());
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showToast, setShowToast] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = subscribeLang((newLang) => {
+      setCurrentLang(newLang);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const t = translations[currentLang];
+  const isRtl = currentLang === 'ur' || currentLang === 'ar';
 
   const hasMinLength = newPassword.length >= 8;
   const hasUppercase = /[A-Z]/.test(newPassword);
@@ -39,15 +51,15 @@ export default function CreateNewPasswordScreen({ onBackToOtp, onResetSuccess })
   };
 
   return (
-    <View style={styles.mainWrapper}>
+    <View style={[styles.mainWrapper, { direction: isRtl ? 'rtl' : 'ltr' }]}>
       
       {showToast && (
-        <View style={styles.toastNotification}>
-          <Ionicons name="checkmark-circle" size={18} color="#0B6655" style={styles.toastIconSpace} />
-          <View style={styles.toastContent}>
-            <Text style={styles.toastTitleText}>Password reset success</Text>
-            <Text style={styles.toastBodyText}>
-              Your password has been updated securely. Redirecting to login...
+        <View style={[styles.toastNotification, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+          <Ionicons name="checkmark-circle" size={18} color="#0B6655" style={[styles.toastIconSpace, { [isRtl ? 'marginLeft' : 'marginRight']: 12, [isRtl ? 'marginRight' : 'marginLeft']: 0 }]} />
+          <View style={[styles.toastContent, { alignItems: isRtl ? 'flex-end' : 'flex-start' }]}>
+            <Text style={[styles.toastTitleText, { textAlign: isRtl ? 'right' : 'left' }]}>{t.passResetSuccessTitle}</Text>
+            <Text style={[styles.toastBodyText, { textAlign: isRtl ? 'right' : 'left' }]}>
+              {t.passResetSuccessBody}
             </Text>
           </View>
         </View>
@@ -55,24 +67,24 @@ export default function CreateNewPasswordScreen({ onBackToOtp, onResetSuccess })
 
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         
-        <View style={styles.navBar}>
+        <View style={[styles.navBar, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
           <TouchableOpacity onPress={onBackToOtp} style={styles.backArrowButton}>
-            <Ionicons name="chevron-back" size={20} color="#1D2939" />
+            <Ionicons name={isRtl ? "chevron-forward" : "chevron-back"} size={20} color="#1D2939" />
           </TouchableOpacity>
-          <Text style={styles.navTitle}>Reset password</Text>
+          <Text style={styles.navTitle}>{t.createNewPassTitle}</Text>
           <View style={styles.navRightPlaceholder} />
         </View>
 
-        <View style={styles.contentSection}>
-          <Text style={styles.mainTitle}>New password</Text>
+        <View style={[styles.contentSection, { alignItems: isRtl ? 'flex-end' : 'flex-start' }]}>
+          <Text style={styles.mainTitle}>{t.newPasswordHeading}</Text>
         </View>
 
         <View style={styles.formContainer}>
-          <Text style={styles.inputLabel}>New password</Text>
-          <View style={[styles.inputWrapper, hasMinLength && styles.inputSuccessBorder]}>
-            <Feather name="lock" size={18} color="#667085" style={styles.inputIcon} />
+          <Text style={[styles.inputLabel, { textAlign: isRtl ? 'right' : 'left' }]}>{t.newPasswordLabel}</Text>
+          <View style={[styles.inputWrapper, { flexDirection: isRtl ? 'row-reverse' : 'row' }, hasMinLength && styles.inputSuccessBorder]}>
+            <Feather name="lock" size={18} color="#667085" style={[styles.inputIcon, { [isRtl ? 'marginLeft' : 'marginRight']: 10, [isRtl ? 'marginRight' : 'marginLeft']: 0 }]} />
             <TextInput 
-              style={styles.textInput} 
+              style={[styles.textInput, { textAlign: isRtl ? 'right' : 'left' }]} 
               placeholder="••••••••" 
               placeholderTextColor="#98A2B3"
               secureTextEntry
@@ -81,11 +93,11 @@ export default function CreateNewPasswordScreen({ onBackToOtp, onResetSuccess })
             />
           </View>
 
-          <Text style={styles.inputLabel}>Confirm password</Text>
-          <View style={[styles.inputWrapper, passwordsMatch && styles.inputSuccessBorder]}>
-            <Feather name="lock" size={18} color="#667085" style={styles.inputIcon} />
+          <Text style={[styles.inputLabel, { textAlign: isRtl ? 'right' : 'left' }]}>{t.confirmPasswordLabel}</Text>
+          <View style={[styles.inputWrapper, { flexDirection: isRtl ? 'row-reverse' : 'row' }, passwordsMatch && styles.inputSuccessBorder]}>
+            <Feather name="lock" size={18} color="#667085" style={[styles.inputIcon, { [isRtl ? 'marginLeft' : 'marginRight']: 10, [isRtl ? 'marginRight' : 'marginLeft']: 0 }]} />
             <TextInput 
-              style={styles.textInput} 
+              style={[styles.textInput, { textAlign: isRtl ? 'right' : 'left' }]} 
               placeholder="••••••••" 
               placeholderTextColor="#98A2B3"
               secureTextEntry
@@ -95,63 +107,63 @@ export default function CreateNewPasswordScreen({ onBackToOtp, onResetSuccess })
           </View>
 
           <View style={styles.validationContainer}>
-            <View style={styles.validationRow}>
+            <View style={[styles.validationRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
               <Ionicons 
                 name={hasMinLength ? "checkmark-circle" : "ellipse-outline"} 
                 size={16} 
                 color={hasMinLength ? "#0B6655" : "#667085"} 
-                style={styles.checkIcon} 
+                style={[styles.checkIcon, { [isRtl ? 'marginLeft' : 'marginRight']: 8, [isRtl ? 'marginRight' : 'marginLeft']: 0 }]} 
               />
-              <Text style={[styles.validationText, hasMinLength && styles.validationTextSuccess]}>
-                At least 8 characters
+              <Text style={[styles.validationText, { textAlign: isRtl ? 'right' : 'left' }, hasMinLength && styles.validationTextSuccess]}>
+                {t.reqMinChars}
               </Text>
             </View>
 
-            <View style={styles.validationRow}>
+            <View style={[styles.validationRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
               <Ionicons 
                 name={hasUppercase ? "checkmark-circle" : "ellipse-outline"} 
                 size={16} 
                 color={hasUppercase ? "#0B6655" : "#667085"} 
-                style={styles.checkIcon} 
+                style={[styles.checkIcon, { [isRtl ? 'marginLeft' : 'marginRight']: 8, [isRtl ? 'marginRight' : 'marginLeft']: 0 }]} 
               />
-              <Text style={[styles.validationText, hasUppercase && styles.validationTextSuccess]}>
-                One uppercase letter
+              <Text style={[styles.validationText, { textAlign: isRtl ? 'right' : 'left' }, hasUppercase && styles.validationTextSuccess]}>
+                {t.reqUppercase}
               </Text>
             </View>
 
-            <View style={styles.validationRow}>
+            <View style={[styles.validationRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
               <Ionicons 
                 name={hasNumber ? "checkmark-circle" : "ellipse-outline"} 
                 size={16} 
                 color={hasNumber ? "#0B6655" : "#667085"} 
-                style={styles.checkIcon} 
+                style={[styles.checkIcon, { [isRtl ? 'marginLeft' : 'marginRight']: 8, [isRtl ? 'marginRight' : 'marginLeft']: 0 }]} 
               />
-              <Text style={[styles.validationText, hasNumber && styles.validationTextSuccess]}>
-                One number
+              <Text style={[styles.validationText, { textAlign: isRtl ? 'right' : 'left' }, hasNumber && styles.validationTextSuccess]}>
+                {t.reqNumber}
               </Text>
             </View>
 
-            <View style={styles.validationRow}>
+            <View style={[styles.validationRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
               <Ionicons 
                 name={hasSymbol ? "checkmark-circle" : "ellipse-outline"} 
                 size={16} 
                 color={hasSymbol ? "#0B6655" : "#667085"} 
-                style={styles.checkIcon} 
+                style={[styles.checkIcon, { [isRtl ? 'marginLeft' : 'marginRight']: 8, [isRtl ? 'marginRight' : 'marginLeft']: 0 }]} 
               />
-              <Text style={[styles.validationText, hasSymbol && styles.validationTextSuccess]}>
-                One symbol
+              <Text style={[styles.validationText, { textAlign: isRtl ? 'right' : 'left' }, hasSymbol && styles.validationTextSuccess]}>
+                {t.reqSymbol}
               </Text>
             </View>
 
-            <View style={styles.validationRow}>
+            <View style={[styles.validationRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
               <Ionicons 
                 name={passwordsMatch ? "checkmark-circle" : "ellipse-outline"} 
                 size={16} 
                 color={passwordsMatch ? "#0B6655" : "#667085"} 
-                style={styles.checkIcon} 
+                style={[styles.checkIcon, { [isRtl ? 'marginLeft' : 'marginRight']: 8, [isRtl ? 'marginRight' : 'marginLeft']: 0 }]} 
               />
-              <Text style={[styles.validationText, passwordsMatch && styles.validationTextSuccess]}>
-                Both passwords match
+              <Text style={[styles.validationText, { textAlign: isRtl ? 'right' : 'left' }, passwordsMatch && styles.validationTextSuccess]}>
+                {t.reqMatch}
               </Text>
             </View>
           </View>
@@ -161,7 +173,7 @@ export default function CreateNewPasswordScreen({ onBackToOtp, onResetSuccess })
             onPress={handleResetPassword}
             disabled={!isFormValid}
           >
-            <Text style={styles.resetButtonText}>Reset password</Text>
+            <Text style={styles.resetButtonText}>{t.createNewPassTitle}</Text>
           </TouchableOpacity>
         </View>
 
@@ -198,7 +210,6 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   toastIconSpace: {
-    marginRight: 12,
     marginTop: 2,
   },
   toastContent: {
@@ -272,9 +283,7 @@ const styles = StyleSheet.create({
   inputSuccessBorder: {
     borderColor: '#0B6655',
   },
-  inputIcon: {
-    marginRight: 10,
-  },
+  inputIcon: {},
   textInput: {
     flex: 1,
     color: '#1D2939',
@@ -289,9 +298,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
-  checkIcon: {
-    marginRight: 8,
-  },
+  checkIcon: {},
   validationText: {
     fontSize: 14,
     color: '#667085',

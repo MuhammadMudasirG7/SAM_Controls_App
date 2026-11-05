@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   StyleSheet, 
   Text, 
@@ -8,17 +8,30 @@ import {
   Dimensions 
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { translations, getGlobalLang, subscribeLang } from '../../../i18n';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function LocationPrivacyScreen({ onBack }) {
+  const [currentLang, setCurrentLang] = useState(getGlobalLang());
+
+  useEffect(() => {
+    const unsubscribe = subscribeLang((newLang) => {
+      setCurrentLang(newLang);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const t = translations[currentLang];
+  const isRtl = currentLang === 'ur' || currentLang === 'ar';
+
   return (
-    <View style={styles.mainWrapper}>
-      <View style={styles.navTopHeaderBar}>
+    <View style={[styles.mainWrapper, { direction: isRtl ? 'rtl' : 'ltr' }]}>
+      <View style={[styles.navTopHeaderBar, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
         <TouchableOpacity onPress={onBack} style={styles.headerBackArrowLink}>
-          <Ionicons name="chevron-back" size={20} color="#344054" />
+          <Ionicons name={isRtl ? "chevron-forward" : "chevron-back"} size={20} color="#344054" />
         </TouchableOpacity>
-        <Text style={styles.navBarHeadingCenterTitle}>Location & privacy</Text>
+        <Text style={styles.navBarHeadingCenterTitle}>{t.locPrivacyTitle}</Text>
         <View style={styles.headerRightBoxSpace} />
       </View>
 
@@ -28,56 +41,68 @@ export default function LocationPrivacyScreen({ onBack }) {
           <View style={styles.illustrationIconCircleBadge}>
             <Ionicons name="shield-checkmark-outline" size={32} color="#0B6655" />
           </View>
-          <Text style={styles.illustrationCenterSubTextTitle}>Before your first check-in, here's what the app collects and why.</Text>
+          <Text style={[styles.illustrationCenterSubTextTitle, { textAlign: isRtl ? 'right' : 'center' }]}>
+            {t.locPrivacyHeaderSub}
+          </Text>
         </View>
 
         {/* Informational Multi-tier Nested Audit Card Blocks Frame layout match */}
         <View style={styles.nestedInformationalStackCardBlock}>
           
-          <View style={styles.informationalNodeItemRowLine}>
-            <View style={styles.nodeItemIconCircleBadge}><Ionicons name="location-outline" size={18} color="#0B6655" /></View>
-            <View style={styles.nodeItemTextContentBlock}>
-              <Text style={styles.nodeItemHeaderLabelTitleText}>At check-in and check-out</Text>
-              <Text style={styles.nodeItemDescriptionParagraphText}>Your location once, so the server can confirm you're inside your site.</Text>
+          <View style={[styles.informationalNodeItemRowLine, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+            <View style={[styles.nodeItemIconCircleBadge, isRtl ? { marginLeft: 12, marginRight: 0 } : { marginRight: 12, marginLeft: 0 }]}>
+              <Ionicons name="location-outline" size={18} color="#0B6655" />
+            </View>
+            <View style={[styles.nodeItemTextContentBlock, { alignItems: isRtl ? 'flex-end' : 'flex-start' }]}>
+              <Text style={[styles.nodeItemHeaderLabelTitleText, { textAlign: isRtl ? 'right' : 'left' }]}>{t.checkInTierTitle}</Text>
+              <Text style={[styles.nodeItemDescriptionParagraphText, { textAlign: isRtl ? 'right' : 'left' }]}>{t.checkInTierDesc}</Text>
             </View>
           </View>
 
-          <View style={styles.informationalNodeItemRowLine}>
-            <View style={styles.nodeItemIconCircleBadge}><Ionicons name="time-outline" size={18} color="#0B6655" /></View>
-            <View style={styles.nodeItemTextContentBlock}>
-              <Text style={styles.nodeItemHeaderLabelTitleText}>Hourly presence (only if you turn it on)</Text>
-              <Text style={styles.nodeItemDescriptionParagraphText}>Location during your shift only — between check-in and check-out.</Text>
+          <View style={[styles.informationalNodeItemRowLine, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+            <View style={[styles.nodeItemIconCircleBadge, isRtl ? { marginLeft: 12, marginRight: 0 } : { marginRight: 12, marginLeft: 0 }]}>
+              <Ionicons name="time-outline" size={18} color="#0B6655" />
+            </View>
+            <View style={[styles.nodeItemTextContentBlock, { alignItems: isRtl ? 'flex-end' : 'flex-start' }]}>
+              <Text style={[styles.nodeItemHeaderLabelTitleText, { textAlign: isRtl ? 'right' : 'left' }]}>{t.hourlyTierTitle}</Text>
+              <Text style={[styles.nodeItemDescriptionParagraphText, { textAlign: isRtl ? 'right' : 'left' }]}>{t.hourlyTierDesc}</Text>
             </View>
           </View>
 
-          <View style={styles.informationalNodeItemRowLine}>
-            <View style={styles.nodeItemIconCircleBadge}><Ionicons name="people-outline" size={18} color="#0B6655" /></View>
-            <View style={styles.nodeItemTextContentBlock}>
-              <Text style={styles.nodeItemHeaderLabelTitleText}>Who sees it</Text>
-              <Text style={styles.nodeItemDescriptionParagraphText}>Your HR team in Digital Faciliter. It stays in your company's own system.</Text>
+          <View style={[styles.informationalNodeItemRowLine, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+            <View style={[styles.nodeItemIconCircleBadge, isRtl ? { marginLeft: 12, marginRight: 0 } : { marginRight: 12, marginLeft: 0 }]}>
+              <Ionicons name="people-outline" size={18} color="#0B6655" />
+            </View>
+            <View style={[styles.nodeItemTextContentBlock, { alignItems: isRtl ? 'flex-end' : 'flex-start' }]}>
+              <Text style={[styles.nodeItemHeaderLabelTitleText, { textAlign: isRtl ? 'right' : 'left' }]}>{t.whoSeesItTitle}</Text>
+              <Text style={[styles.nodeItemDescriptionParagraphText, { textAlign: isRtl ? 'right' : 'left' }]}>{t.whoSeesItDesc}</Text>
             </View>
           </View>
 
-          <View style={[styles.informationalNodeItemRowLine, { borderBottomWidth: 0 }]}>
-            <View style={styles.nodeItemIconCircleBadge}><Ionicons name="calendar-outline" size={18} color="#0B6655" /></View>
-            <View style={styles.nodeItemTextContentBlock}>
-              <Text style={styles.nodeItemHeaderLabelTitleText}>How long it's kept</Text>
-              <Text style={styles.nodeItemDescriptionParagraphText}>13 months, then deleted.</Text>
+          <View style={[styles.informationalNodeItemRowLine, { flexDirection: isRtl ? 'row-reverse' : 'row', borderBottomWidth: 0 }]}>
+            <View style={[styles.nodeItemIconCircleBadge, isRtl ? { marginLeft: 12, marginRight: 0 } : { marginRight: 12, marginLeft: 0 }]}>
+              <Ionicons name="calendar-outline" size={18} color="#0B6655" />
+            </View>
+            <View style={[styles.nodeItemTextContentBlock, { alignItems: isRtl ? 'flex-end' : 'flex-start' }]}>
+              <Text style={[styles.nodeItemHeaderLabelTitleText, { textAlign: isRtl ? 'right' : 'left' }]}>{t.howLongTitle}</Text>
+              <Text style={[styles.nodeItemDescriptionParagraphText, { textAlign: isRtl ? 'right' : 'left' }]}>{t.howLongDesc}</Text>
             </View>
           </View>
 
         </View>
 
-        <View style={styles.consentGreenVerifiedMetadataBadgeStripBar}>
-          <Ionicons name="checkmark-circle" size={16} color="#027A48" style={{ marginRight: 8 }} />
-          <Text style={styles.consentGreenVerifiedMetadataBadgeStripBarText}>Accepted 22 Sep 2026 07:52 - consent version 1.0</Text>
+        <View style={[styles.consentGreenVerifiedMetadataBadgeStripBar, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+          <Ionicons name="checkmark-circle" size={16} color="#027A48" style={[isRtl ? { marginLeft: 8 } : { marginRight: 8 }]} />
+          <Text style={[styles.consentGreenVerifiedMetadataBadgeStripBarText, { textAlign: isRtl ? 'right' : 'left' }]}>
+            {t.consentAcceptedText("22 Sep 2026 07:52")}
+          </Text>
         </View>
 
-        <TouchableOpacity style={styles.withdrawConsentActionButtonOutlineRow} onPress={() => alert("Consent preferences configuration requested.")}>
-          <Text style={styles.withdrawConsentActionButtonOutlineRowText}>Withdraw consent</Text>
+        <TouchableOpacity style={styles.withdrawConsentActionButtonOutlineRow} onPress={() => alert(t.consentAlertMsg)}>
+          <Text style={styles.withdrawConsentActionButtonOutlineRowText}>{t.withdrawConsentBtn}</Text>
         </TouchableOpacity>
 
-        <Text style={styles.legalFinePrintDisclaimerNoteFooter}>Consent text v1.0 · PDPL (KSA) · Canadian privacy law</Text>
+        <Text style={styles.legalFinePrintDisclaimerNoteFooter}>{t.legalFinePrint}</Text>
 
       </ScrollView>
     </View>
@@ -96,7 +121,7 @@ const styles = StyleSheet.create({
   illustrationCenterSubTextTitle: { fontSize: 13, color: '#475467', textAlign: 'center', marginTop: 16, paddingHorizontal: 16, lineHeight: 20, fontWeight: '500' },
   nestedInformationalStackCardBlock: { backgroundColor: '#FFFFFF', borderRadius: 16, borderWidth: 1, borderColor: '#EEF0F2', width: '100%', overflow: 'hidden' },
   informationalNodeItemRowLine: { flexDirection: 'row', padding: 16, borderBottomWidth: 1, borderColor: '#F2F4F7' },
-  nodeItemIconCircleBadge: { width: 36, height: 36, borderRadius: 8, backgroundColor: '#F0F9F8', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  nodeItemIconCircleBadge: { width: 36, height: 36, borderRadius: 8, backgroundColor: '#F0F9F8', justifyContent: 'center', alignItems: 'center' },
   nodeItemTextContentBlock: { flex: 1 },
   nodeItemHeaderLabelTitleText: { fontSize: 14, fontWeight: '700', color: '#101828' },
   nodeItemDescriptionParagraphText: { fontSize: 12, color: '#667085', marginTop: 4, lineHeight: 18, fontWeight: '500' },

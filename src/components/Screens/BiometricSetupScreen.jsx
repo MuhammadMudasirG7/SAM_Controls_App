@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   StyleSheet, 
   Text, 
@@ -10,10 +10,22 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
+import { translations, getGlobalLang, subscribeLang } from '../../../i18n';
 
 export default function BiometricSetupScreen({ biometricType, onTurnOn, onNotNow, employeeId }) {
+  const [currentLang, setCurrentLang] = useState(getGlobalLang());
   const [statusState, setStatusState] = useState('default'); // 'default', 'processing', 'success'
   const isFaceId = biometricType === 'face_id';
+
+  useEffect(() => {
+    const unsubscribe = subscribeLang((newLang) => {
+      setCurrentLang(newLang);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const t = translations[currentLang];
+  const isRtl = currentLang === 'ur' || currentLang === 'ar';
 
   const handleEnrollBiometrics = async () => {
     if (statusState === 'processing' || statusState === 'success') return;
@@ -60,7 +72,7 @@ export default function BiometricSetupScreen({ biometricType, onTurnOn, onNotNow
   };
 
   return (
-    <View style={styles.mainWrapper}>
+    <View style={[styles.mainWrapper, { direction: isRtl ? 'rtl' : 'ltr' }]}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         
         <View style={styles.iconContainer}>
@@ -92,13 +104,13 @@ export default function BiometricSetupScreen({ biometricType, onTurnOn, onNotNow
         </View>
 
         <View style={styles.contentSection}>
-          <Text style={styles.mainTitle}>
-            {isFaceId ? "Log in with Face ID?" : "Log in with your fingerprint?"}
+          <Text style={[styles.mainTitle, { textAlign: isRtl ? 'right' : 'left' }]}>
+            {isFaceId ? t.biometricTitleFace : t.biometricTitleFinger}
           </Text>
-          <Text style={styles.descriptionText}>
+          <Text style={[styles.descriptionText, { textAlign: isRtl ? 'right' : 'left' }]}>
             {isFaceId 
-              ? "Next time, open the app with one look instead of your password. Your face never leaves this phone."
-              : "Next time, open the app with one touch instead of your password. Your fingerprint never leaves this phone."
+              ? t.biometricDescFace
+              : t.biometricDescFinger
             }
           </Text>
         </View>
@@ -114,9 +126,9 @@ export default function BiometricSetupScreen({ biometricType, onTurnOn, onNotNow
             disabled={statusState === 'processing' || statusState === 'success'}
           >
             <Text style={styles.primaryButtonText}>
-              {statusState === 'processing' && "Waiting for Sensor..."}
-              {statusState === 'success' && "Activated"}
-              {statusState === 'default' && "Turn on"}
+              {statusState === 'processing' && t.waitingForSensor}
+              {statusState === 'success' && t.activated}
+              {statusState === 'default' && t.turnOn}
             </Text>
           </TouchableOpacity>
 
@@ -125,7 +137,7 @@ export default function BiometricSetupScreen({ biometricType, onTurnOn, onNotNow
             onPress={onNotNow}
             disabled={statusState === 'processing' || statusState === 'success'}
           >
-            <Text style={styles.secondaryButtonText}>Not now</Text>
+            <Text style={styles.secondaryButtonText}>{t.notNow}</Text>
           </TouchableOpacity>
         </View>
 
